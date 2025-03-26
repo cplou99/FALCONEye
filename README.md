@@ -35,7 +35,7 @@ FALCONEye code was built under the [lmms-eval](https://github.com/EvolvingLMMs-L
 - 🥳 3/26/2025: We have released the [FALCON-Bench](https://huggingface.co/datasets/cplou99/FALCON-Bench) and [Paper](https://arxiv.org/abs/2503.19850)! 🔥
 
 
-## Citation
+## 📝 Citation
 ```
 @article{plou2025falconeyefindinganswerslocalizing,
       title={FALCONEye: Finding Answers and Localizing Content in ONE-hour-long videos with multi-modal LLMs}, 
