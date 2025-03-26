@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>FALCONEye</title>
+  <meta name="description" content="Finding Answers and Localizing Content">
+  <meta name="keywords" content="long-video-understanding, video-question-answering, llms">
+
+  <meta property="og:title" content="FALCONEye">
+  <meta property="og:description" content="Finding Answers and Localizing Content">
+  <meta property="og:url" content="https://cplou99.github.io/falconeye/">
+  <meta property="og:type" content="website">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="FALCONEye">
+  <meta name="twitter:description" content="Finding Answers and Localizing Content">
+
+  <link rel="stylesheet" href="css/main.css">
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+
+  <script src="/js/main.js"></script>
+</head>
+<body>
+  <header>
+    <div class="venue">Under Review</div>
+    
+    <div style="display: flex; justify-content: center; position: relative; margin-bottom: 0;">
+      <img src="img/FALCONEyeLogo.png" alt="Logo" style="width: 80px; height: auto; position: absolute; left: calc(50% - 190px); transform: translateX(-50%);">
+      <h1 class="title" style="font-size: 50px; font-family: 'Google Sans', 'Roboto', sans-serif; margin-bottom: 0; text-align: center;">
+        FALCONEye
+      </h1>
+    </div>
+  
+    <p style="font-size: 30px; font-weight: 500; margin: 5px 0; line-height: 1.4; text-align: center; font-family: 'Google Sans', 'Roboto', sans-serif;">
+      Finding Answers and Localizing Content in ONE-hour-long videos with multi-modal LLMs
+    </p>
+  </header>
+
+
+  
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;700&display=swap" rel="stylesheet">
+  
+  
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+  
+  
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+  <div class="authors">
+      <span><a href="https://cplou99.github.io/web">Carlos Plou</a><sup></sup></span>
+      <span><a href="https://www.linkedin.com/in/cesar-borja-moreno">Cesar Borja</a><sup></sup></span>
+      <span><a href="https://webdiis.unizar.es/~rmcantin/">Ruben Martinez-Cantin</a><sup></sup></span>
+      <span><a href="https://sites.google.com/unizar.es/anac">Ana C. Murillo</a><sup></sup></span>
+  </div>
+
+  
+
+  <div class="affiliations">
+        <span>DIIS-I3A, Universidad de Zaragoza</span>
+  </div>
+
+  <div class="links">
+      <a href="">
+        
+          <i class="ai ai-arxiv"></i>
+        
+        Paper (Soon)
+      </a>
+      <a href="https://github.com/cplou99/FALCONEye">
+        
+          <i class="bi bi-github"></i>
+        
+        Code (Upon acceptance)
+      </a>
+      <a href="https://huggingface.co/datasets/cplou99/FALCON-Bench">
+        
+          <img src="https://huggingface.co/front/assets/huggingface_logo-noborder.svg" alt="icon" style="width: 20px; height: 20px; margin-right: 5px;">
+        
+        Benchmark
+      </a>
+  </div>
+</header>
+
+<main>
+  <section class="content">
+    <style>
+    .btn-group button {
+        padding: 8px 16px;
+        margin: 5px;
+        font-size: 16px;
+        background-color: #444;
+        color: white;
+        border: 1px solid #444;
+        border-radius: 15px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .btn-group button:hover {
+        background-color: #333;
+    }
+    .btn-group button img {
+        width: 18px;
+        height: 18px;
+    }
+    .links a {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 20px;
+    margin: 5px;
+    font-size: 16px;
+    color: white !important;
+    background-color: #444 !important;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.2s ease;
+    gap: 8px;
+    }
+
+
+    .links a i {
+    margin-right: 5px;
+    }
+
+    h2 {
+        font-size: 2rem; /* Slightly larger for better visibility */
+        font-weight: 700; /* Bold */
+        margin-bottom: 0.5em;
+        margin-top: 0.5em;
+        text-align: center; /* Center-align */
+        font-family: 'Google Sans', 'Roboto', sans-serif; /* Matching title */
+        }
+
+    h3 {
+        font-size: 1.5rem; /* More prominent than before */
+        font-weight: 700; /* Bold */
+        margin-bottom: 0.5em;
+        margin-top: 0.5em;
+        text-align: center; /* Center-align */
+        font-family: 'Google Sans', 'Roboto', sans-serif; /* Matching title */
+    }
+
+    body {
+        font-family: 'Google Sans', 'Roboto', sans-serif;
+        color: var(--text-color);
+        line-height: 1.5em;
+        font-weight: 400;
+        background-color: white;
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 1rem;
+        font-size: 18px;
+    }
+
+    hr {
+        border: none;
+        height: 2px;
+        background-color: #444; /* Color oscuro y elegante */
+        margin: 30px auto 0px auto; /* Más espacio arriba, menos abajo */
+        opacity: 0.7; /* Ligera transparencia */
+        width: 80%; /* Un poco más corto para estilizar */
+    }
+
+    .sub-separator {
+        border: none;
+        height: 1px;
+        background-color: #666; /* A bit lighter */
+        margin: 20px auto 5px auto; /* Less space than main separator */
+        opacity: 0.5; /* More transparent */
+        width: 40%; /* Shorter width */
+    }
+
+
+
+
+
+</style>
+<hr>
+<h2 id="motivation">Motivation</h2>
+<p>Information retrieval in hour-long videos presents a significant challenge, even for state-of-the-art Vision-Language Models (VLMs), particularly when the desired information is localized within a small subset of frames. Given a question and an one-hour-long video, Video Answer Search (VAS) targets to accurately pinpoint the answer and the corresponding short temporal clip that contains the answer.</p>
+<figure class="teaser">
+    <img src="img/FALCON_task.png">
+</figure>
+<div style="text-align: center; margin: 20px;">
+    <p style="font-size: 24px; font-weight: bold;">Are you ready to prove your skills? Accept the Video Answer Search challenge and find the answer!</p>
+    <button onclick="startChallenge()" style="padding: 10px 20px; font-size: 18px; background-color: #007BFF; color: white; border: none; border-radius: 5px;">Accept the Challenge!</button>
+</div>
+<div id="challenge" style="display: none; text-align: center;">
+    <p style="font-size: 28px; font-weight: bold; margin-top: 20px;">Which coffee is announced at the entrance of Caffè Nero?</p>
+    <input id="user-answer" type="text" placeholder="Your answer..." style="padding: 10px; margin: 10px; width: 80%; border: 2px solid #333; border-radius: 8px; font-size: 18px;">
+    <button onclick="checkAnswer()" style="padding: 8px 20px; font-size: 16px; background-color: #28a745; color: white; border: none; border-radius: 5px;">Submit</button>
+    <p style="font-size: 18px; font-weight: bold; margin-top: 10px;">Time spent: <span id="timer">0</span> seconds</p>
+    <iframe id="video-player" width="100%" height="400" src="https://www.youtube.com/embed/mA9lYWyXMYU?mute=1&controls=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <p id="result" style="margin-top: 10px; font-size: 22px;"></p>
+    <div id="answer-container" style="display: none; margin-top: 10px; text-align: center;">
+        <p style="font-size: 20px;">The correct answer is: Iced Cappuccino (between 23:50 and 24:05)</p>
+        <iframe id="answer-clip" width="100%" height="400" src="https://www.youtube.com/embed/mA9lYWyXMYU?start=1430&end=1445&autoplay=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
+</div>
+<script>
+    let startTime, timerInterval;
+
+    function startChallenge() {
+        const challenge = document.getElementById("challenge");
+        challenge.style.display = "block";
+        startTimer();
+    }
+
+    function startTimer() {
+        startTime = Date.now();
+        timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    function updateTimer() {
+        const timer = document.getElementById("timer");
+        const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+        timer.textContent = elapsedTime;
+    }
+
+    function checkAnswer() {
+        clearInterval(timerInterval);
+        const userAnswer = document.getElementById("user-answer").value.toLowerCase();
+        const result = document.getElementById("result");
+        const answerContainer = document.getElementById("answer-container");
+        const videoPlayer = document.getElementById("video-player");
+
+        const correctAnswer = "iced cappuccino";
+        if (userAnswer.includes(correctAnswer)) {
+            result.textContent = "Great job! You got it right!";
+            result.style.color = "green";
+        } else {
+            result.textContent = "Oops! That wasn’t it! Here’s the correct answer:";
+            result.style.color = "red";
+            answerContainer.style.display = "block";
+            videoPlayer.style.display = "none";
+        }
+    }
+</script>
+<hr>
+<h2 id="falconeye-a-novel-video-agent">FALCONEye: A Novel Video Agent</h2>
+<p>We propose a novel video agent, FALCONEye, which combines a VLM and a Large Language Model (LLM) to search relevant information along the video, and locate the frames with the answer.</p>
+<figure class="teaser">
+    <img src="img/FALCONEye_Teaser.png">
+</figure>
+<p>FALCONEye novelty relies on 1) the proposed meta-architecture, which is better suited to tackle hour-long videos compared to short video approaches in the state-of-the-art; 2) a new efficient exploration algorithm to locate the information using short clips, captions and answer confidence; and 3) our state-of-the-art VLMs calibration analysis for the answer confidence.</p>
+<hr class="sub-separator">
+<h3 id="exploration-algorithm">Exploration Algorithm</h3>
+<p>We propose a novel search algorithm that emulates human-like VAS behavior to iteratively focus on video clips most likely to contain the answer. It leverages captions, question-answers semantics, and confidence scores to optimize localization, avoiding irrelevant clips and  concentrating resources on exploring temporally relevant segments until finding the answer.</p>
+<figure class="teaser">
+    <img src="img/FALCONEye_ExpAlg.png">
+</figure>
+<hr class="sub-separator">
+<h3 id="vlms-calibration">VLMs Calibration</h3>
+<hr>
+<h2 id="falcon-bench">FALCON-Bench</h2>
+<p>The <a href="https://huggingface.co/datasets/cplou99/FALCON-Bench">FALCON-Bench test set</a> comprises 506 questions built over 80 one-hour-long videos sourced from three different recognized datasets as: <a href="https://www.soccer-net.org/home">Soccernet</a>, <a href="https://github.com/rese1f/MovieChat">MovieChat-1K</a> and <a href="https://huggingface.co/datasets/shawshankvkt/Walking_Tours">Walking_Tours</a>.</p>
+<p>While our research focus is centered on open-questions, we provide 4 choices per question to enable multiple-choice question evaluation mode. Besides, we provide the ground truth temporal clip (gt_time_interval) and a ground truth frame (gt_frame_idx) within the answer is contained.</p>
+<figure class="teaser">
+    <img src="img/FalconBench_examples.png">
+</figure>
+<hr>
+<h2 id="results">Results</h2>
+<hr>
+<h2 id="bibtex">BibTeX</h2>
+<pre tabindex="0"><code>@article{
+}
+</code></pre>
+  </section>
+</main>
+
+<footer>
+  &copy; 2025 RoPeRT Research Group, Universidad de Zaragoza
+</footer>
+
+
+</body>
+</html>

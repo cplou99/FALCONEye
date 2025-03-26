@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
+
   <title>FALCONEye</title>
   <meta name="description" content="Finding Answers and Localizing Content">
   <meta name="keywords" content="long-video-understanding, video-question-answering, llms">
@@ -17,7 +18,7 @@
   <meta name="twitter:title" content="FALCONEye">
   <meta name="twitter:description" content="Finding Answers and Localizing Content">
 
-  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="/css/main.css">
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
@@ -66,11 +67,11 @@
   </div>
 
   <div class="links">
-      <a href="">
+      <a href="https://arxiv.org/abs/2503.19850">
         
           <i class="ai ai-arxiv"></i>
         
-        Paper (Soon)
+        Paper
       </a>
       <a href="https://github.com/cplou99/FALCONEye">
         
@@ -180,25 +181,54 @@
         width: 40%; /* Shorter width */
     }
 
+    .small-image {
+        display: block;
+        max-width: 80%; /* Ajusta el tamaño según prefieras */
+        margin: 20px auto; /* Centra la imagen */
+        border-radius: 10px; /* Esquinas redondeadas para un toque más elegante */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Sombra suave */
+    }
 
+    .small-image-simple {
+        display: block;
+        max-width: 80%; /* Ajusta el tamaño según prefieras */
+        margin: 20px auto; /* Centra la imagen */
+    }
+
+    .image-pair {
+        display: flex;
+        justify-content: center;
+        gap: 10px; /* Espacio entre las imágenes */
+        margin: 20px auto; /* Margen superior e inferior */
+        width: 100%; /* Ocupa toda la anchura */
+    }
+
+    .image-pair img {
+        width: 48%; /* Cada imagen ocupa aproximadamente la mitad */
+        height: auto; /* Ajusta la altura proporcionalmente */
+        border-radius: 8px; /* Bordes redondeados */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Sombra ligera */
+    }
 
 
 
 </style>
 <hr>
 <h2 id="motivation">Motivation</h2>
-<p>Information retrieval in hour-long videos presents a significant challenge, even for state-of-the-art Vision-Language Models (VLMs), particularly when the desired information is localized within a small subset of frames. Given a question and an one-hour-long video, Video Answer Search (VAS) targets to accurately pinpoint the answer and the corresponding short temporal clip that contains the answer.</p>
-<figure class="teaser">
-    <img src="img/FALCON_task.png">
-</figure>
+<p><strong>Information retrieval in hour-long videos</strong> presents a significant challenge, even for state-of-the-art Vision-Language Models (VLMs), particularly <strong>when the desired information is localized within a small subset of frames</strong>. Given a question and an one-hour-long video, Video Answer Search (VAS) targets to accurately pinpoint the answer and the corresponding short temporal clip that contains the answer.</p>
+<img src="img/FALCON_task.png" class="small-image-simple">
 <div style="text-align: center; margin: 20px;">
     <p style="font-size: 24px; font-weight: bold;">Are you ready to prove your skills? Accept the Video Answer Search challenge and find the answer!</p>
-    <button onclick="startChallenge()" style="padding: 10px 20px; font-size: 18px; background-color: #007BFF; color: white; border: none; border-radius: 5px;">Accept the Challenge!</button>
+    <button onclick="startChallenge()" style="padding: 10px 20px; font-size: 18px; background-color: #007BFF; color: white; border: none; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease;">
+        Accept the Challenge!
+    </button>
 </div>
 <div id="challenge" style="display: none; text-align: center;">
     <p style="font-size: 28px; font-weight: bold; margin-top: 20px;">Which coffee is announced at the entrance of Caffè Nero?</p>
     <input id="user-answer" type="text" placeholder="Your answer..." style="padding: 10px; margin: 10px; width: 80%; border: 2px solid #333; border-radius: 8px; font-size: 18px;">
-    <button onclick="checkAnswer()" style="padding: 8px 20px; font-size: 16px; background-color: #28a745; color: white; border: none; border-radius: 5px;">Submit</button>
+    <button onclick="checkAnswer()" style="padding: 8px 20px; font-size: 16px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease;">
+        Submit
+    </button>
     <p style="font-size: 18px; font-weight: bold; margin-top: 10px;">Time spent: <span id="timer">0</span> seconds</p>
     <iframe id="video-player" width="100%" height="400" src="https://www.youtube.com/embed/mA9lYWyXMYU?mute=1&controls=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     <p id="result" style="margin-top: 10px; font-size: 22px;"></p>
@@ -206,6 +236,7 @@
         <p style="font-size: 20px;">The correct answer is: Iced Cappuccino (between 23:50 and 24:05)</p>
         <iframe id="answer-clip" width="100%" height="400" src="https://www.youtube.com/embed/mA9lYWyXMYU?start=1430&end=1445&autoplay=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
+    <p id="reflection" style="margin-top: 20px; font-size: 18px; font-style: italic;"></p>
 </div>
 <script>
     let startTime, timerInterval;
@@ -233,13 +264,34 @@
         const result = document.getElementById("result");
         const answerContainer = document.getElementById("answer-container");
         const videoPlayer = document.getElementById("video-player");
+        const reflection = document.getElementById("reflection");
+        const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
 
         const correctAnswer = "iced cappuccino";
+        let message = "";
+        let congrats = "";
+
+        if (elapsedTime < 60) {
+            message = "Whoa, that was quick! You nailed it in no time.";
+            congrats = "Congrats!";
+        } else if (elapsedTime < 180) {
+            message = "Nice one! You did pretty well.";
+            congrats = "Congrats!";
+        } else if (elapsedTime < 300) {
+            message = "Not bad at all! Took you a bit, but you got there.";
+            congrats = "Congrats!";
+        } else {
+            message = "That took a while... But hey, you made it!";
+            congrats = "Congrats!";
+        }
+
+        result.textContent = `${congrats} ${message} You spent ${elapsedTime} seconds.`;
+        reflection.textContent = "Think about it... How did you figure it out? Do you think current VLMs using 32/64 uniform frame sampling throughout the video would catch that detail?";
+
         if (userAnswer.includes(correctAnswer)) {
-            result.textContent = "Great job! You got it right!";
             result.style.color = "green";
         } else {
-            result.textContent = "Oops! That wasn’t it! Here’s the correct answer:";
+            result.textContent = `Oops! That wasn’t it! You spent ${elapsedTime} seconds. Here's the correct answer:`;
             result.style.color = "red";
             answerContainer.style.display = "block";
             videoPlayer.style.display = "none";
@@ -248,31 +300,45 @@
 </script>
 <hr>
 <h2 id="falconeye-a-novel-video-agent">FALCONEye: A Novel Video Agent</h2>
-<p>We propose a novel video agent, FALCONEye, which combines a VLM and a Large Language Model (LLM) to search relevant information along the video, and locate the frames with the answer.</p>
+<p>We propose a novel video agent, <strong>FALCONEye</strong>, which <strong>combines a VLM and a Large Language Model (LLM) to reason and search relevant information along the video</strong>, and locate the frames with the answer.</p>
+<p>FALCONEye novelty relies on 1) the proposed meta-architecture, which is better suited to tackle hour-long videos compared to short video approaches in the state-of-the-art; 2) a new efficient exploration algorithm to locate the information using short clips, captions and answer confidence; and 3) our state-of-the-art VLMs calibration analysis for the answer confidence.</p>
 <figure class="teaser">
     <img src="img/FALCONEye_Teaser.png">
 </figure>
-<p>FALCONEye novelty relies on 1) the proposed meta-architecture, which is better suited to tackle hour-long videos compared to short video approaches in the state-of-the-art; 2) a new efficient exploration algorithm to locate the information using short clips, captions and answer confidence; and 3) our state-of-the-art VLMs calibration analysis for the answer confidence.</p>
 <hr class="sub-separator">
 <h3 id="exploration-algorithm">Exploration Algorithm</h3>
-<p>We propose a novel search algorithm that emulates human-like VAS behavior to iteratively focus on video clips most likely to contain the answer. It leverages captions, question-answers semantics, and confidence scores to optimize localization, avoiding irrelevant clips and  concentrating resources on exploring temporally relevant segments until finding the answer.</p>
+<p>We propose a <strong>novel search algorithm that emulates human-like VAS behavior</strong> to iteratively focus on video clips most likely to contain the answer. It leverages captions, question-answers semantics, and confidence scores to optimize localization, avoiding irrelevant clips and  concentrating resources on exploring temporally relevant segments until finding the answer.</p>
 <figure class="teaser">
     <img src="img/FALCONEye_ExpAlg.png">
 </figure>
 <hr class="sub-separator">
 <h3 id="vlms-calibration">VLMs Calibration</h3>
+<p>Since our exploration algorithm relies on VLM answer confidence, we must evaluate if the confidence values are well calibrated. For MCQs, confidence computation is straightforward, as only a single token is output. However, for OQs, <strong>probability tokens</strong> must be <strong>aggregated across the entire sequence of tokens</strong>. We investigate various aggregation metrics, identifying the <strong>geometric average</strong> as the most suitable approach for VLMs. Lastly, we adopt Reliability Diagrams, which group predictions into bins based on confidence and measure the gap (calibration error) between confidence and accuracy for each bin. Calibration plots for LLaVa-Video 7B, LLaVa-OneVision 7B, and Qwen2.5-VL 7B reveal a surprisingly <strong>high calibration performance</strong>.</p>
+<div class="image-pair">
+    <img src="img/CalibrationMCQs.png" alt="MCQs">
+    <img src="img/CalibrationOQs.png" alt="OQs">
+</div>
 <hr>
 <h2 id="falcon-bench">FALCON-Bench</h2>
-<p>The <a href="https://huggingface.co/datasets/cplou99/FALCON-Bench">FALCON-Bench test set</a> comprises 506 questions built over 80 one-hour-long videos sourced from three different recognized datasets as: <a href="https://www.soccer-net.org/home">Soccernet</a>, <a href="https://github.com/rese1f/MovieChat">MovieChat-1K</a> and <a href="https://huggingface.co/datasets/shawshankvkt/Walking_Tours">Walking_Tours</a>.</p>
-<p>While our research focus is centered on open-questions, we provide 4 choices per question to enable multiple-choice question evaluation mode. Besides, we provide the ground truth temporal clip (gt_time_interval) and a ground truth frame (gt_frame_idx) within the answer is contained.</p>
-<figure class="teaser">
-    <img src="img/FalconBench_examples.png">
-</figure>
+<p>The <a href="https://huggingface.co/datasets/cplou99/FALCON-Bench">FALCON-Bench test set</a> comprises <strong>506 questions</strong> built <strong>over 80 one-hour-long videos</strong> sourced from three different recognized datasets as: <a href="https://www.soccer-net.org/home">SoccerNet</a>, <a href="https://github.com/rese1f/MovieChat">MovieChat-1K</a> and <a href="https://huggingface.co/datasets/shawshankvkt/Walking_Tours">Walking_Tours</a>.</p>
+<p>While our research focus is centered on open-questions, we provide 4 choices per question to enable multiple-choice question evaluation mode. Besides, we provide the <strong>ground truth temporal clip annotation</strong> (gt_time_interval) and a ground truth frame (gt_frame_idx) <strong>within the answer is contained</strong>.</p>
+<img src="img/FalconBench_examples_new.png" class="small-image">
 <hr>
 <h2 id="results">Results</h2>
+<p>We evaluate our meta-architecture using Qwen2.5-VL 7B as the VLM and GPT4o-mini as the LLM. Most VLMs that are limited to a small number of sampled frames fail to outperform the LLM-blind baselines in MCQs, suggesting that their advantage over random guessing stems from discarding certain options, rather than actual answer retrieval from visual content. Only LLaVA-Video and Apollo show clear improvements. This trend is not observed in OQs, where models must generate answers independently, validating their reliability.  Among meta-architectures, only <strong>FALCONEye</strong> demonstrates robustness for long-form VAS, <strong>achieving 70.0% accuracy in MCQs and 44.7% in OQs</strong> with its top-performance configuration, and 64.7% and 41.1%, respectively, in the cost-efficient variant.</p>
+<figure class="teaser">
+    <img src="img/table_results.png">
+</figure>
 <hr>
 <h2 id="bibtex">BibTeX</h2>
-<pre tabindex="0"><code>@article{
+<pre tabindex="0"><code>@article{plou2025falconeyefindinganswerslocalizing,
+      title={FALCONEye: Finding Answers and Localizing Content in ONE-hour-long videos with multi-modal LLMs}, 
+      author={Carlos Plou and Cesar Borja and Ruben Martinez-Cantin and Ana C. Murillo},
+      year={2025},
+      eprint={2503.19850},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2503.19850},
 }
 </code></pre>
   </section>
