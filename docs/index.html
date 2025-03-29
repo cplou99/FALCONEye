@@ -209,6 +209,20 @@
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Sombra ligera */
     }
 
+<script>
+    window.addEventListener('load', function() {
+        const iframes = document.querySelectorAll('iframe');
+        iframes.forEach(iframe => {
+            const src = iframe.getAttribute('src');
+            if (src && src.includes('youtube.com')) {
+                if (!src.includes('mute=1')) {
+                    const newSrc = src.includes('?') ? `${src}&mute=1` : `${src}?mute=1`;
+                    iframe.setAttribute('src', newSrc);
+                }
+            }
+        });
+    });
+</script>
 
 
 </style>
