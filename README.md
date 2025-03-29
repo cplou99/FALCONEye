@@ -15,7 +15,7 @@
 
 
 <div align="center">
-   <a href="https://github.com/cplou99/FALCONEye"><strong>Homepage</strong></a> | <a href="https://huggingface.co/datasets/cplou99/FALCON-Bench"><strong>🤗 Benchmark</strong></a> |  <a href="https://arxiv.org/abs/2503.19850"><strong>ArXiv</strong></a>
+   <a href="https://github.com/cplou99/FALCONEye"><strong>🌍 Homepage</strong></a> | <a href="https://huggingface.co/datasets/cplou99/FALCON-Bench"><strong>🤗 Benchmark</strong></a> |  <a href="https://arxiv.org/abs/2503.19850"><strong>📝 ArXiv</strong></a>
    </div>   
 
 
