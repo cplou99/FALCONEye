@@ -1,10 +1,10 @@
 
+<h1 align="center">FALCONEye: Finding Answers and Localizing Content in ONE-hour-long videos with multi-modal LLMs</h1>
+
+
 <div align="center">
     <img src="docs/img/FALCONEyeLogo.png" alt="Description" width="150">
 </div>
-
-<h1 align="center">FALCONEye: Finding Answers and Localizing Content in ONE-hour-long videos with multi-modal LLMs</h1>
-
 
  <div align="center">
     <a href="https://cplou99.github.io/web/" target="_blank">Carlos Plou</a>,
