@@ -5,23 +5,18 @@
 
 <h1 align="center">FALCONEye: Finding Answers and Localizing Content in ONE-hour-long videos with multi-modal LLMs</h1>
 
-<p align="center" style="display: flex; justify-content: center; gap: 5px; flex-wrap: nowrap; margin: 0;">
-    <a href="https://cplou99.github.io/FALCONEye/">
-        <img alt="Build" src="http://img.shields.io/badge/Project Page-FALCONEye-blue" style="height: 30px;">
-    </a>
-    <a href="https://arxiv.org/abs/2503.19850">
-        <img alt="Build" src="http://img.shields.io/badge/cs.CV-arXiv-red" style="height: 30px;">
-    </a>
-</p>
-<p align="center" style="display: flex; justify-content: center; gap: 5px; flex-wrap: nowrap; margin: 0;">
-    <a href="https://huggingface.co/datasets/cplou99/FALCON-Bench">
-        <img alt="Build" src="https://img.shields.io/badge/🤗 Dataset-FALCON Benchmark-yellow" style="height: 30px;">
-    </a>
-    <a href="https://github.com/cplou99/FALCONEye">
-        <img alt="Build" src="https://img.shields.io/badge/Github-FALCONEye-green" style="height: 30px;">
-    </a>
-</p>
 
+ <div align="center">
+    <a href="https://cplou99.github.io/web/" target="_blank">Carlos Plou</a>,
+    <a href="https://www.linkedin.com/in/cesar-borja-moreno/" target="_blank">Cesar Borja</a>,
+    <a href="https://webdiis.unizar.es/~rmcantin/" target="_blank">Ruben Martinez-Cantin</a>,
+    <a href="https://sites.google.com/unizar.es/anac/home?authuser=0" target="_blank">Ana C. Murillo</a>,
+</div>
+
+
+<div align="center">
+   <a href="https://github.com/cplou99/FALCONEye"><strong>Homepage</strong></a> | <a href="https://huggingface.co/datasets/cplou99/FALCON-Bench"><strong>🤗 Benchmark</strong></a> |  <a href="https://arxiv.org/abs/2503.19850"><strong>ArXiv</strong></a>
+   </div>   
 
 
 
