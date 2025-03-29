@@ -20,14 +20,14 @@
 
 
 
-This repo contains the code presented in the paper "[FALCONEye: Finding Answers and Localizing Content in ONE-hour-long videos with multi-modal LLMs](https://arxiv.org/abs/2503.19850)".
-FALCONEye code was built under the [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval) framework.
-
-
 
 ## 🔔 News:
 - 🔜 Code will be released upon acceptance.
 - 🥳 3/26/2025: We have released the [FALCON-Bench](https://huggingface.co/datasets/cplou99/FALCON-Bench) and [Paper](https://arxiv.org/abs/2503.19850)! 🔥
+
+## Description
+This repo contains the code presented in the paper "[FALCONEye: Finding Answers and Localizing Content in ONE-hour-long videos with multi-modal LLMs](https://arxiv.org/abs/2503.19850)".
+FALCONEye code was built under the [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval) framework.
 
 
 ## 📝 Citation
