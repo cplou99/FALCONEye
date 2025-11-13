@@ -34,7 +34,7 @@ FALCONEye code was built under the [lmms-eval](https://github.com/EvolvingLMMs-L
 
 ## 📝 Citation
 ```
-@article{plou2025falconeyefindinganswerslocalizing,
+@article{plou2025falconeye,
       title={FALCONEye: Finding Answers and Localizing Content in ONE-hour-long videos with multi-modal LLMs}, 
       author={Carlos Plou and Cesar Borja and Ruben Martinez-Cantin and Ana C. Murillo},
       year={2025},
