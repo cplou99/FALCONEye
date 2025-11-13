@@ -6,6 +6,7 @@
     <img src="docs/img/FALCONEyeLogo.png" alt="Description" width="150">
 </div>
 
+<h3 align="center">WACV 2026</h3>
  <div align="center">
     <a href="https://cplou99.github.io/web/" target="_blank">Carlos Plou</a>,
     <a href="https://www.linkedin.com/in/cesar-borja-moreno/" target="_blank">Cesar Borja</a>,
