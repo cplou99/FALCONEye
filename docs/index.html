@@ -322,7 +322,7 @@
 <h3 id="exploration-algorithm">Exploration Algorithm</h3>
 <p>We propose a <strong>novel search algorithm that emulates human-like VAS behavior</strong> to iteratively focus on video clips most likely to contain the answer. It leverages captions, question-answers semantics, and confidence scores to optimize localization, avoiding irrelevant clips and  concentrating resources on exploring temporally relevant segments until finding the answer.</p>
 <figure class="teaser">
-    <img src="img/FALCONEye_ExpAlg.png">
+    <img src="img/FalconExpAlgorithm.png">
 </figure>
 <hr class="sub-separator">
 <h3 id="vlms-calibration">VLMs Calibration</h3>
@@ -340,7 +340,7 @@
 <h2 id="results">Results</h2>
 <p>We evaluate our meta-architecture using Qwen2.5-VL 7B as the VLM and GPT4o-mini as the LLM. Most VLMs that are limited to a small number of sampled frames fail to outperform the LLM-blind baselines in MCQs, suggesting that their advantage over random guessing stems from discarding certain options, rather than actual answer retrieval from visual content. Only LLaVA-Video and Apollo show clear improvements. This trend is not observed in OQs, where models must generate answers independently, validating their reliability.  Among meta-architectures, only <strong>FALCONEye</strong> demonstrates robustness for long-form VAS, <strong>achieving 70.0% accuracy in MCQs and 44.7% in OQs</strong> with its top-performance configuration, and 64.7% and 41.1%, respectively, in the cost-efficient variant.</p>
 <figure class="teaser">
-    <img src="img/table_results.png">
+    <img src="img/MainResultsTable.png">
 </figure>
 <hr>
 <h2 id="bibtex">BibTeX</h2>
