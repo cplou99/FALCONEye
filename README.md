@@ -25,6 +25,88 @@
 This repo contains the code presented in the paper "[FALCONEye: Finding Answers and Localizing Content in ONE-hour-long videos with multi-modal LLMs](https://arxiv.org/abs/2503.19850)".
 FALCONEye code was built under the [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval) framework.
 
+## FALCON-Bench
+
+### Recommendations
+To evaluate FALCON-Bench with the latest models, you can evaluate it from the [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval) repository which is actively maintained. Otherwise, you can also use this repository which is a branch of lmms-eval frozen at the time of the FALCONEye paper submission. Instructions for both options are provided below.
+
+### Setup Instructions
+
+Before using FALCONBench, you must complete the following steps:
+
+**Note:** The benchmark requires the `soccernet` Python package. You can install it via pip:
+
+```bash
+pip install soccernet
+```
+
+1. **Download Video Data**
+	 - **SoccerNet:**  
+		 - Fill out the [SoccerNet NDA form](https://docs.google.com/forms/d/e/1FAIpQLSfYFqjZNm4IgwGnyJXDPk2Ko_lZcbVtYX73w5lf6din5nxfmA/viewform).
+		 - Save the password sent to your email as the environment variable `SOCCERNET_PWD`.
+	 - **MovieChat-1K:**  
+		 - Request access at [MovieChat-1K on HuggingFace](https://huggingface.co/datasets/Enxin/MovieChat-1K_train).
+	 - **Walking Tours:**  
+		 - These videos are already included in the Huggingface repository.
+
+2. **Set Environment Variables**
+	 - `SOCCERNET_PWD`: Password for SoccerNet video download.
+	 - `OPENAI_API_KEY`: Required for open-ended question evaluation (OQ tasks).
+
+	 Example (Linux):
+	 ```bash
+	 export SOCCERNET_PWD=your_soccernet_password
+	 export OPENAI_API_KEY=your_openai_api_key
+	 ```
+
+3. **Download and Organize Videos**
+	 - The first time you run the benchmark, the script will download the videos from the different sources and organize them in dataset_kwargs['cache_dir']/full_videos directory if they are not already present.
+
+### Tasks Overview
+
+FALCONBench includes four main tasks:
+
+- **FALCONBench_mcq:**  
+	Multiple-choice questions about video content. The model selects the correct option (A, B, C, ...).
+
+- **FALCONBench_mcq_temploc:**  
+	Multiple-choice with temporal localization. The model selects the correct option and specifies the time window (in seconds) where the answer is observed.
+
+- **FALCONBench_oq:**  
+	Open-ended questions. The model generates a free-form answer, which is evaluated for semantic correctness.
+
+- **FALCONBench_oq_temploc:**  
+	Open-ended with temporal localization. The model generates an answer and specifies the relevant time window.
+
+### Example Output Format for Temporal Localization Tasks
+
+The model should return:
+
+```json
+{
+	"response": "A person running",
+	"temporal_window": [105, 140]
+}
+```
+
+### Example: Running FALCONBench with LLaVA-Video
+
+To launch the benchmark using the LLaVA-Video model, use the following command:
+
+```bash
+accelerate launch --num_processes 1 --main_process_port 12345 -m lmms_eval \
+		--model llava_vid \
+		--model_args pretrained=lmms-lab/LLaVA-Video-7B-Qwen2,conv_template=qwen_1_5,video_decode_backend=decord,max_frames_num=32,mm_spatial_pool_mode=average,mm_newline_position=grid,mm_resampler_location=after \
+		--tasks FALCONBench_mcq \
+		--batch_size 1 \
+		--log_samples \
+		--log_samples_suffix falconbench-llava_vid_7B \
+		--output_path ./logs/
+```
+
+**Note:** In the FALCONEye paper, results for small 7B VLMs are reported only for the MCQ and OQ tasks (without temporal localization) because these models struggle to output a json dictionary with both the answer and the temporal window, leading to a significant drop in accuracy when required to do so.
+
+Replace `--tasks FALCONBench_mcq` with any of the other tasks (`FALCONBench_mcq_temploc`, `FALCONBench_oq`, `FALCONBench_oq_temploc`) as needed.
 
 ## 📝 Citation
 ```
