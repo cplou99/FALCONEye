@@ -19,6 +19,15 @@
 - 🥳 11/2025: Paper accepted at WACV 2026!
 - ⭐ 3/2025: We have released the [FALCON-Bench](https://huggingface.co/datasets/cplou99/FALCON-Bench) and [Paper](https://arxiv.org/abs/2503.19850)! 🔥
 
+## Requirements
+1. Follow [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval) installation instructions. 
+
+2. FALCON-Bench additionally requires the `soccernet` Python package. You can install it via pip:
+
+```bash
+pip install soccernet
+```
+
 ## Description
 This repo contains the code presented in the paper "[FALCONEye: Finding Answers and Localizing Content in ONE-hour-long videos with multi-modal LLMs](https://arxiv.org/abs/2503.19850)".
 FALCONEye code was built under the [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval) framework. Specifically, the main contributions of this repo are:
@@ -26,20 +35,14 @@ FALCONEye code was built under the [lmms-eval](https://github.com/EvolvingLMMs-L
 - FALCONEye meta-architecture for long video understanding with multi-modal LLMs: lmms_eval/models/falconeye.py
 Additionally, some baselines such as socratic, and  are present in lmms_eval/models/. And the VLMs and LLMs used as part of the meta-architecture are addes a function called inference to accept individual inferences.
 
-## FALCON-Bench
+## FALCON-Bench Evaluation
 
 ### Recommendations
 To evaluate FALCON-Bench with the latest models, you can evaluate it from the [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval) repository which is actively maintained. Otherwise, you can also use this repository which is a branch of lmms-eval frozen at the time of the FALCONEye paper submission. Instructions for both options are provided below.
 
 ### Setup Instructions
 
-Before using FALCONBench, you must complete the following steps:
-
-**Note:** The benchmark requires the `soccernet` Python package. You can install it via pip:
-
-```bash
-pip install soccernet
-```
+Before using FALCONBench, you must complete the following steps.
 
 1. **Download Video Data**
 	 - **SoccerNet:**  
@@ -67,19 +70,22 @@ pip install soccernet
 
 FALCONBench includes four main tasks:
 
-- **FALCONBench_mcq:**  
-	Multiple-choice questions about video content. The model selects the correct option (A, B, C, ...).
+| Task Name                | Multiple-Choice | Open-Ended | Temporal Localization | Output Format |
+|-------------------------|:--------------:|:----------:|:--------------------:|:-------------:|
+| FALCONBench_mcq         |      ✅        |     ❌     |         ❌           |   String      |
+| FALCONBench_mcq_temploc |      ✅        |     ❌     |         ✅           |   Dict        |
+| FALCONBench_oq          |      ❌        |     ✅     |         ❌           |   String      |
+| FALCONBench_oq_temploc  |      ❌        |     ✅     |         ✅           |   Dict        |
 
-- **FALCONBench_mcq_temploc:**  
-	Multiple-choice with temporal localization. The model selects the correct option and specifies the time window (in seconds) where the answer is observed.
+**Legend:**
+- **Multiple-Choice:** The task uses multiple-choice questions (A, B, C, D)
+- **Open-Ended:** The task uses open-ended (free-form) questions
+- **Temporal Localization:** The model must specify a time window for the answer
+- **Output Format:**
+  - **String:** The model outputs a single answer string
+  - **Dict:** The model outputs a dictionary with both the answer and the temporal window
 
-- **FALCONBench_oq:**  
-	Open-ended questions. The model generates a free-form answer, which is evaluated for semantic correctness.
-
-- **FALCONBench_oq_temploc:**  
-	Open-ended with temporal localization. The model generates an answer and specifies the relevant time window.
-
-### Example Output Format for Temporal Localization Tasks
+#### Example Output Format for Temporal Localization Tasks
 
 The model should return:
 
