@@ -14,8 +14,6 @@
    </div>   
 
 
-
-
 ## 🔔 News:
 - 🔜 Code will be released soon.
 - 🥳 11/2025: Paper accepted at WACV 2026!
@@ -23,7 +21,10 @@
 
 ## Description
 This repo contains the code presented in the paper "[FALCONEye: Finding Answers and Localizing Content in ONE-hour-long videos with multi-modal LLMs](https://arxiv.org/abs/2503.19850)".
-FALCONEye code was built under the [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval) framework.
+FALCONEye code was built under the [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval) framework. Specifically, the main contributions of this repo are:
+- The FALCON-Bench benchmark for evaluating multi-modal LLMs in long videos with temporal localization: lmms_eval/tasks/FALCONBench/
+- FALCONEye meta-architecture for long video understanding with multi-modal LLMs: lmms_eval/models/falconeye.py
+Additionally, some baselines such as socratic, and  are present in lmms_eval/models/. And the VLMs and LLMs used as part of the meta-architecture are addes a function called inference to accept individual inferences.
 
 ## FALCON-Bench
 
@@ -108,6 +109,11 @@ accelerate launch --num_processes 1 --main_process_port 12345 -m lmms_eval \
 
 Replace `--tasks FALCONBench_mcq` with any of the other tasks (`FALCONBench_mcq_temploc`, `FALCONBench_oq`, `FALCONBench_oq_temploc`) as needed.
 
+
+## Licenses
+
+License: This project is released under the CC BY-NC 4.0 license for academic and research purposes. The codebase is built upon lmms-eval (Apache 2.0).
+
 ## 📝 Citation
 ```
 @article{plou2025falconeye,
@@ -121,3 +127,7 @@ Replace `--tasks FALCONBench_mcq` with any of the other tasks (`FALCONBench_mcq_
       url={https://arxiv.org/abs/2503.19850},
 }
 ```
+
+## Acknowledgements
+
+This work was supported by a DGA scholarship and by DGA project T45_23R, and grants AIA2025-163563-C31, PID2024-159284NB-I00, PID2021-125514NB-I00 and PID2024-158322OB-I00 funded by MCIN/AEI/10.13039/501100011033 and ERDF.
