@@ -87,7 +87,7 @@ AVAILABLE_CHAT_TEMPLATE_MODELS = {
     "bagel_lmms_engine": "BagelLmmsEngine",
     "llava_hf": "LlavaHf",
     "qwen3_vl": "Qwen3_VL",
-    "qwen2_5_vl": "Qwen2_5_VL",
+    "qwen2_5_vl_chat": "Qwen2_5_VL",
     "thyme": "Thyme",
     "openai_compatible": "OpenAICompatible",
     "vllm": "VLLM",
@@ -99,14 +99,23 @@ AVAILABLE_CHAT_TEMPLATE_MODELS = {
     "llava_onevision1_5": "Llava_OneVision1_5",
 }
 
+AVAILABLE_META_ARCHITECTURES = {
+    "falcon_eye": "FALCONEye",
+    "sequential_model": "Sequential",
+    "sequentialbp_model": "SequentialBP",
+    "socratic_model": "Socratic",
+}
 
 def get_model(model_name, force_simple: bool = False):
-    if model_name not in AVAILABLE_SIMPLE_MODELS and model_name not in AVAILABLE_CHAT_TEMPLATE_MODELS:
+    if model_name not in AVAILABLE_SIMPLE_MODELS and model_name not in AVAILABLE_CHAT_TEMPLATE_MODELS and model_name not in AVAILABLE_META_ARCHITECTURES:
         raise ValueError(f"Model {model_name} not found in available models.")
 
     if model_name in AVAILABLE_CHAT_TEMPLATE_MODELS:
         model_type = "chat"
         AVAILABLE_MODELS = AVAILABLE_CHAT_TEMPLATE_MODELS
+    elif model_name in AVAILABLE_META_ARCHITECTURES:
+        model_type = "meta_architecture"
+        AVAILABLE_MODELS = AVAILABLE_META_ARCHITECTURES
     else:
         model_type = "simple"
         AVAILABLE_MODELS = AVAILABLE_SIMPLE_MODELS

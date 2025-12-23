@@ -1,11 +1,9 @@
 import io
 import json
 import os
-import pathlib
-import re
 import time
 from typing import List, Tuple
-
+import pickle
 import datasets
 from accelerate import Accelerator, DistributedType
 from loguru import logger as eval_logger
@@ -17,43 +15,33 @@ from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
 
 try:
-    import google.generativeai as genai
-    from google.generativeai.types import HarmBlockThreshold, HarmCategory
+    from google import genai
 
     NUM_SECONDS_TO_SLEEP = 30
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-    genai.configure(api_key=GOOGLE_API_KEY)
 
 except Exception as e:
     eval_logger.error(f"Error importing generativeai: {str(e)}")
     genai = None
 
-try:
-    import soundfile as sf
-except Exception as e:
-    eval_logger.warning(f"Error importing soundfile, audio generation will not work: {str(e)}")
-
-
 @register_model("gemini_api")
 class GeminiAPI(lmms):
     def __init__(
         self,
-        model_version: str = "gemini-1.5-pro",
+        model_version: str = "gemini-2.5-flash",
         # modality: str = "image",
         timeout: int = 120,
-        continual_mode: bool = True,
+        continual_mode: bool = False,
         response_persistent_folder: str = "./logs/gemini_persistent_folder",
-        interleave: bool = False,
         # We will cache the Gemini API response in this path and use it for future requests
         **kwargs,
     ) -> None:
         super().__init__()
         self.model_version = model_version
         self.timeout = timeout
-        self.model = genai.GenerativeModel(model_version)
+        self.client = genai.Client(api_key=GOOGLE_API_KEY)
         self.continual_mode = continual_mode
-        self.response_persistent_file = ""
-        self.interleave = interleave
+
         # if self.continual_mode and response_persistent_folder is None:
         #     raise ValueError("Continual mode requires a persistent path for the response. We will cache the Gemini API response in this path and use it for future requests. Please provide a valid path.")
         if self.continual_mode:
@@ -61,6 +49,9 @@ class GeminiAPI(lmms):
             if not os.path.exists(self.response_persistent_folder):
                 os.makedirs(self.response_persistent_folder)
             self.response_persistent_file = os.path.join(self.response_persistent_folder, f"{self.model_version}_response.json")
+        else:
+            self.response_persistent_folder = ""
+            self.response_persistent_file = ""
 
         if os.path.exists(self.response_persistent_file):
             with open(self.response_persistent_file, "r") as f:
@@ -137,20 +128,99 @@ class GeminiAPI(lmms):
                     eval_logger.error(f"Error converting video: {str(e)}")
         return images
 
-    def construct_interleaved_input(self, content, media):
-        pattern = r"<media_(\d+)>"
-        parts = re.split(pattern, content)
-        result = []
-        for i, part in enumerate(parts):
-            if i % 2 == 0:
-                if part == "":
-                    continue
-                result.append(part)
+    def add_llm_reason_to_curr_dict(self, key, value):
+        value = json.dumps(value)
+        self.curr_llm_reasons[key.encode()] = value.encode()
+
+    def save_llm_reasons_func(self, filename, key, value):
+        cache_llm_file = os.path.join(self.response_persistent_folder, f"{filename}.pkl")
+        if not hasattr(self, 'curr_llm_reasons') or self.curr_llm_reasons is None:
+            self.curr_llm_reasons = {}
+        self.add_llm_reason_to_curr_dict(key, value)
+        with open(cache_llm_file, "wb") as f:
+            pickle.dump(self.curr_llm_reasons, f)
+            f.flush()
+            os.fsync(f.fileno())
+
+    def load_llm_reasons_func(self, filename, key):
+        cache_llm_file = os.path.join(self.response_persistent_folder, f"{filename}.pkl")
+        if not hasattr(self, 'curr_llm_filename') or filename != self.curr_llm_filename or not hasattr(self, 'curr_llm_reasons') or self.curr_llm_reasons is None:
+            if os.path.isfile(cache_llm_file):
+                with open(cache_llm_file, "rb") as f:
+                    self.curr_llm_reasons = pickle.load(f)
             else:
-                result.append(media[int(part)])
+                self.curr_llm_reasons = {}
+            self.curr_llm_filename = filename
+        if key.encode() in self.curr_llm_reasons:
+            return self.curr_llm_reasons[key.encode()].decode()
+        else:
+            return None
 
-        return result
+    def parse_json(self, text):
+        import re
+        # Remove leading/trailing whitespace and unescape newlines
+        text = text.strip()
+        # Remove triple backticks and possible "json" markers
+        text = re.sub(r"^```json|^```|```$", "", text, flags=re.MULTILINE).strip()
+        # Replace escaped newlines with real newlines
+        text = text.replace("\\n", "\n")
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            # Fallback: extract the largest JSON object or array
+            json_pattern = r"(\{.*\}|\[.*\])"
+            matches = re.findall(json_pattern, text, re.DOTALL)
+            for match in matches:
+                try:
+                    match = match.replace("'", '"')
+                    return json.loads(match)
+                except json.JSONDecodeError:
+                    continue
+            print("No valid JSON found in the text.")
+            return None
 
+    def get_llm_response(self, system_prompt, prompt, filename, json_format=True):
+        messages = [
+            {
+                "role": "system",
+                "content": system_prompt,
+            },
+            {"role": "user", "content": prompt},
+        ]
+        key = json.dumps([self.model_version, messages])
+        if self.continual_mode and hasattr(self, 'load_llm_reasons_func') and self.load_llm_reasons_func(filename, key) is not None:
+            cached_value = self.load_llm_reasons_func(filename, key)
+            if cached_value is not None:
+                cached_value = self.parse_json(cached_value)
+                print("Get LLM reasoning from cache")
+                return cached_value
+        for _ in range(3):
+            try:
+                print("GeminiAPI: Sending request to Gemini")
+                t_llm_init = time.time()
+                # Gemini API expects a single string prompt, so we concatenate
+                full_prompt = f"{system_prompt}\n{prompt}"
+                response = self.client.models.generate_content(
+                    model=self.model_version,
+                    contents=full_prompt)
+                response_text = response.text
+                if json_format:
+                    response_parsed = self.parse_json(response_text)
+                else:
+                    response_parsed = response_text
+                response_dict = {
+                    "response": response_parsed,
+                    "tokens_usage": response.usage_metadata.total_token_count,  # Gemini API may not provide token usage
+                    "time": time.time() - t_llm_init
+                }
+                if hasattr(self, 'save_llm_reasons_func'):
+                    self.save_llm_reasons_func(filename, key, response_dict)
+                return response_dict
+            except Exception as e:
+                print(f"Gemini Error: {e}")
+                continue
+        return "Gemini Error"
+    
     def generate_until(self, requests) -> List[str]:
         res = []
         pbar = tqdm(total=len(requests), disable=(self.rank != 0), desc="Model Responding")
@@ -182,10 +252,7 @@ class GeminiAPI(lmms):
             visuals = self.flatten(visuals)
             visuals = self.convert_modality(visuals)
 
-            if self.interleave:
-                message = self.construct_interleaved_input(contexts, visuals)
-            else:
-                message = [contexts] + visuals
+            message = [contexts] + visuals
 
             for attempt in range(5):
                 try:
@@ -235,72 +302,3 @@ class GeminiAPI(lmms):
     def loglikelihood(self, requests: List[Instance]) -> List[Tuple[float, bool]]:
         # TODO
         assert False, "Gemini API not support"
-
-    def get_image_audio_text_interleaved_messsage(self, image_path, audio_path, question):
-        # image_path for list of image path
-        # audio_path for list of audio path
-        # question for question
-
-        # fixed image token and no audio in text
-        for index in range(1, 1 + len(image_path)):
-            question = question.replace(f"[img{index}]", "<image>")
-        for index in range(1, 1 + len(audio_path)):
-            question = question.replace(f"[audio{index}]", "<audio>")
-
-        text = question
-
-        info_list = []
-        image_counter = 0
-        audio_counter = 0
-        for part in re.split(r"(<image>|<audio>)", text):
-            if part == "<image>":
-                info_list.append(Image.open(image_path[image_counter]))
-                image_counter += 1
-            elif part == "<audio>":
-                info_list.append({"mime_type": "audio/wav", "data": pathlib.Path(audio_path[audio_counter]).read_bytes()})
-                audio_counter += 1
-            else:
-                if part == " ":
-                    continue
-                info_list.append(part)
-
-        return info_list
-
-    def get_video_audio_text_interleaved_message(self, video_path, audio_path, question):
-        # image_path for list of image path
-        # audio_path for list of audio path
-        # question for question
-
-        # fixed video token and no audio in text
-        for index in range(1, 1 + len(video_path)):
-            question = question.replace(f"[video{index}]", "<video>")
-        for index in range(1, 1 + len(audio_path)):
-            question = question.replace(f"[audio{index}]", "<audio>")
-
-        text = question
-
-        info_list = []
-        video_counter = 0
-        audio_counter = 0
-        for part in re.split(r"(<video>|<audio>)", text):
-            if part == "<video>":
-                current_video_file_name = video_path[video_counter]
-                current_video_file = genai.upload_file(path=current_video_file_name)
-                while current_video_file.state.name == "processing":
-                    print("uploading file")
-                    time.sleep(5)
-                    current_video_file = genai.get_file(current_video_file.name)
-                if current_video_file.state.name == "FAILED":
-                    print("uploading file failed, next question")
-                    return 0
-                info_list.append(current_video_file)
-                video_counter += 1
-            elif part == "<audio>":
-                info_list.append({"mime_type": "audio/wav", "data": pathlib.Path(audio_path[audio_counter]).read_bytes()})
-                audio_counter += 1
-            else:
-                if part == " ":
-                    continue
-                info_list.append(part)
-
-        return info_list

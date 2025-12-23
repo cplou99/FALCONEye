@@ -1,4 +1,3 @@
-import glob
 import math
 import os
 from datetime import timedelta
@@ -91,8 +90,10 @@ class LlavaVid(lmms):
         conv_template="vicuna_v1",
         use_cache=True,
         truncate_context=False,  # whether to truncate the context in generation, set it False for LLaVA-1.6
-        max_frames_num: int = 20,
+        max_frames_num: int = 3,
         video_fps: int = 1,
+        num_tiles: int = None,
+        add_frame_as_tile: bool = False,
         mm_resampler_type: str = "spatial_pool",
         mm_spatial_pool_stride: int = 2,
         mm_spatial_pool_out_channels: int = 1024,
@@ -134,6 +135,8 @@ class LlavaVid(lmms):
         self.mm_spatial_pool_out_channels = int(mm_spatial_pool_out_channels)
         self.mm_spatial_pool_mode = mm_spatial_pool_mode
         self.max_frames_num = int(max_frames_num)
+        self.add_frame_as_tile = add_frame_as_tile
+        self.num_tiles = num_tiles
         self.fps = int(video_fps)
         self.mm_resampler_location = mm_resampler_location
         self.delay_load = delay_load
@@ -218,7 +221,7 @@ class LlavaVid(lmms):
         elif accelerator.num_processes == 1 and device_map == "auto":
             eval_logger.info(f"Using {accelerator.num_processes} devices with tensor parallelism")
             self._rank = 0
-            self._world_size = 1
+            self._word_size = 1
         else:
             eval_logger.info(f"Using single device: {self._device}")
             self.model.to(self._device)
@@ -309,25 +312,120 @@ class LlavaVid(lmms):
                 print(f"Failed to read frame at path: {frame_path}")
         return video
 
-    def load_video(self, video_path, max_frames_num, fps, force_sample=False):
-        if max_frames_num == 0:
-            return np.zeros((1, 336, 336, 3))
-        vr = VideoReader(video_path, ctx=cpu(0), num_threads=1)
-        total_frame_num = len(vr)
-        video_time = total_frame_num / vr.get_avg_fps()
-        fps = round(vr.get_avg_fps() / fps)
-        frame_idx = [i for i in range(0, len(vr), fps)]
-        frame_time = [i / fps for i in frame_idx]
-        if len(frame_idx) > max_frames_num or force_sample:
-            sample_fps = max_frames_num
-            uniform_sampled_frames = np.linspace(0, total_frame_num - 1, sample_fps, dtype=int)
-            frame_idx = uniform_sampled_frames.tolist()
-            frame_time = [i / vr.get_avg_fps() for i in frame_idx]
-        frame_time = ",".join([f"{i:.2f}s" for i in frame_time])
-        spare_frames = vr.get_batch(frame_idx).asnumpy()
-        # import pdb;pdb.set_trace()
+    def split_frame_into_tiles(self, frame, num_tiles):
+        """
+        Splits a frame into a specified number of tiles based on the frame's shape.
 
-        return spare_frames, frame_time, video_time
+        Args:
+            frame (numpy.ndarray): The frame to split.
+            num_tiles (int): The total number of tiles to create.
+
+        Returns:
+            list: A list of tiles, each as a numpy.ndarray.
+        """
+        height, width, _ = frame.shape
+
+        # Determine the number of rows and columns based on the aspect ratio and num_tiles
+        aspect_ratio = width / height
+        cols = int((num_tiles * aspect_ratio) ** 0.5)
+        rows = num_tiles // cols
+
+        # Adjust rows and columns if needed to match the exact number of tiles
+        while rows * cols < num_tiles:
+            cols += 1
+            if rows * cols > num_tiles:
+                rows += 1
+
+        tile_height = height // rows
+        tile_width = width // cols
+
+        tiles = []
+        for i in range(rows):
+            for j in range(cols):
+                if len(tiles) >= num_tiles:
+                    break
+                # Calculate the boundaries for each tile
+                start_row = i * tile_height
+                end_row = (i + 1) * tile_height if i != rows - 1 else height
+                start_col = j * tile_width
+                end_col = (j + 1) * tile_width if j != cols - 1 else width
+
+                # Extract the tile
+                tile = frame[start_row:end_row, start_col:end_col]
+                tiles.append(tile)
+
+        return tiles
+
+    def resize_frame(self, frame, size=(384, 384)):
+        """
+        Resizes a frame to the given size using PIL.Image.
+        """
+        image = Image.fromarray(frame)  # Convert NumPy array to PIL Image
+        resized_image = image.resize(size, Image.BICUBIC)  # Resize to target size
+        return np.array(resized_image)  # Convert back to NumPy array
+
+
+    def get_video_info(self, video_file):
+        from decord import VideoReader
+
+        vr = VideoReader(video_file, ctx=cpu(0), num_threads=1)
+        fps = vr.get_avg_fps()
+
+        total_frames = len(vr)
+        video_time = total_frames / fps
+        video_info = {"vr": vr, "fps": fps, "total_frames": total_frames, "total_duration": video_time, "path": video_file}
+        return video_info
+    
+
+    def load_video(self, video_info, max_num_frames, window_time=None, num_tiles=None, frames_idxs=None):
+
+        fps = video_info["fps"]
+        total_valid_frames = video_info["total_frames"]
+        video_time = video_info["total_duration"]
+        vr = video_info["vr"]
+
+        if frames_idxs is None:
+            if window_time is None:
+                num_frames = min(max_num_frames, int(total_valid_frames))
+                frame_indices = [int(total_valid_frames / num_frames) * i for i in range(num_frames)]
+            else:
+                start_time, end_time = window_time[0], window_time[1]
+                end_time = min(end_time, video_time)
+                start_frame, end_frame = int(start_time * fps), int(end_time * fps)
+                total_window_frames = int((end_time - start_time) * fps) 
+                num_frames = min(max_num_frames, total_window_frames)
+                frame_indices = [int(total_window_frames / num_frames) * i + start_frame for i in range(num_frames)]
+        else:
+            num_frames = len(frames_idxs)
+            frame_indices = frames_idxs
+
+        frames = vr.get_batch(frame_indices)
+        if isinstance(frames, torch.Tensor):
+            frames = frames.numpy()
+        else:
+            frames = frames.asnumpy()
+        frame_timestamps = [frame_index / fps for frame_index in frame_indices]
+        frame_timestamps = ",".join([f"{i:.2f}s" for i in frame_timestamps])
+
+
+        if num_tiles is not None:
+            # For each frame, split into tiles and include the resized original frame and tiles
+            all_frames_with_tiles = []
+            for frame in frames:
+                # Resize the original frame
+                resized_frame = self.resize_frame(frame)
+                # Split into tiles
+                tiles = self.split_frame_into_tiles(frame, num_tiles=num_tiles)
+                # Resize each tile
+                resized_tiles = [self.resize_frame(tile) for tile in tiles]
+                # Append the resized original frame and its resized tiles
+                all_frames_with_tiles.append(resized_frame)
+                all_frames_with_tiles.extend(resized_tiles)
+
+            frames = np.array(all_frames_with_tiles)  # Convert to a NumPy array
+
+        return frames, frame_timestamps, video_time
+    
 
     def tok_decode(self, tokens):
         return self.tokenizer.decode(tokens)
@@ -346,7 +444,8 @@ class LlavaVid(lmms):
             visuals = self.flatten(visuals)
             videos = []
             for visual in visuals:
-                video, frame_time, video_time = self.load_video(visual, self.max_frames_num, self.fps, force_sample=self.force_sample)
+                video_info = self.get_video_info(visual)
+                video, frame_time, video_time = self.load_video(video_info, self.max_frames_num, num_tiles=self.num_tiles)
                 video = self._image_processor.preprocess(video, return_tensors="pt")["pixel_values"].cuda()
                 if self.torch_dtype == "bfloat16":
                     video = video.bfloat16()
@@ -417,18 +516,19 @@ class LlavaVid(lmms):
             visuals = doc_to_visual(self.task_dict[task][split][doc_id])
             # visuals = [visuals]
             # visuals = self.flatten(visuals)
-            if os.path.isdir(visuals[0]):
-                visuals = glob.glob(visuals[0] + "/*")
             videos = []
             try:
                 # for visual in visuals:
                 if len(visuals) == 1:
                     if self.video_decode_backend == "decord":
-                        video, frame_time, video_time = self.load_video(visuals[0], self.max_frames_num, self.fps, force_sample=self.force_sample)
+                        video_info = self.get_video_info(visuals[0])
+                        video, frame_time, video_time = self.load_video(video_info, self.max_frames_num, num_tiles=self.num_tiles)
                     elif self.video_decode_backend == "pyav":
                         video, frame_time, video_time = read_video_pyav(visuals[0], self.max_frames_num, self.fps, force_sample=self.force_sample)
                     elif self.video_decode_backend == "image":
                         video = self.load_image(visuals[0])
+                    elif self.video_decode_backend == "blind":
+                        video = None
                 else:
                     if task == "seedbench":
                         video = visuals
@@ -443,15 +543,16 @@ class LlavaVid(lmms):
                         frame_idx = sampled_indices.tolist()
                         frame_time = [i / fps for i in frame_idx]
                         frame_time = ",".join([f"{i:.2f}s" for i in frame_time])
-                        # video = [visuals[i] for i in frame_idx]
-                        video = np.stack([np.array(Image.open(visuals[i])) for i in frame_idx], axis=0)
+                        video = [visuals[i] for i in frame_idx]
 
-                video = self._image_processor.preprocess(video, return_tensors="pt")["pixel_values"].cuda()
-                if self.torch_dtype == "bfloat16":
-                    video = video.bfloat16()
-                else:
-                    video = video.half()
-                videos.append(video)
+                if video is not None:
+                    video = self._image_processor.preprocess(video, return_tensors="pt")["pixel_values"].cuda()
+                    if self.torch_dtype == "bfloat16":
+                        video = video.bfloat16()
+                    else:
+                        video = video.half()
+                    videos.append(video)
+
             except Exception as e:
                 # import pdb;pdb.set_trace()
                 eval_logger.info(f"{e}")
@@ -464,7 +565,11 @@ class LlavaVid(lmms):
             qs = contexts
             # import pdb;pdb.set_trace()
             if self.add_time_instruction:
-                time_instruciton = f"The video lasts for {video_time:.2f} seconds, and {len(video)} frames are uniformly sampled from it. These frames are located at {frame_time}.Please answer the following questions related to this video."
+                if self.num_tiles is not None: 
+                    sent_tiles = f"with {self.num_tiles} tiles per frame"
+                else: 
+                    sent_tiles = ""
+                time_instruciton = f"The video lasts for {video_time:.2f} seconds, and {len(video)} frames are uniformly sampled from it. These frames are located at {frame_time} {sent_tiles}.Please answer the following questions related to this video."
                 qs = f"{time_instruciton}\n{qs}"
             if self.model.config.mm_use_im_start_end:
                 qs = DEFAULT_IM_START_TOKEN + DEFAULT_IMAGE_TOKEN + DEFAULT_IM_END_TOKEN + "\n" + qs
@@ -484,7 +589,7 @@ class LlavaVid(lmms):
             input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).cuda()
             pad_token_ids = self.tokenizer.pad_token_id if self.tokenizer.pad_token_id is not None else self.tokenizer.eos_token_id
             if "llama_3" in self.conv_template:
-                pad_token_ids = 0  # lmms-lab/llama3-llava-8b is trained on this pad token id. You may need to customize this for other models.
+                pad_token_ids = 0 
             attention_masks = input_ids.ne(pad_token_ids).long().cuda()
 
             stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
@@ -502,8 +607,16 @@ class LlavaVid(lmms):
                 gen_kwargs["top_p"] = None
             if "num_beams" not in gen_kwargs:
                 gen_kwargs["num_beams"] = 1
+            if "return_dict_in_generate" not in gen_kwargs:
+                gen_kwargs["return_dict_in_generate"] = False
+            if "output_scores" not in gen_kwargs:
+                gen_kwargs["output_scores"] = False
+            if "output_logits" not in gen_kwargs:
+                gen_kwargs["output_logits"] = False
 
-            # import pdb;pdb.set_trace()
+            if videos == []:
+                videos = None
+                
             with torch.inference_mode():
                 output_ids = self.model.generate(
                     inputs=input_ids,
@@ -517,17 +630,185 @@ class LlavaVid(lmms):
                     top_p=gen_kwargs["top_p"],
                     num_beams=gen_kwargs["num_beams"],
                     max_new_tokens=gen_kwargs["max_new_tokens"],
+                    return_dict_in_generate=gen_kwargs["return_dict_in_generate"],
+                    output_scores=gen_kwargs["output_scores"],
+                    output_logits=gen_kwargs["output_logits"]
                 )
-                # output_ids_2 = self.model.generate(inputs=input_ids, images=videos, attention_mask=attention_masks, modalities="video", do_sample=False, max_new_tokens=50,stopping_criteria=[stopping_criteria])
-                # output_ids = self.model.generate(inputs=input_ids, images=videos, attention_mask=attention_masks, modalities="video", do_sample=True, temperature=0.2, max_new_tokens=50,use_cache=True)
 
-            outputs = self.tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0].strip()
-            eval_logger.debug(f"Question: {cur_prompt}")
-            eval_logger.debug(f"Answer: {outputs}")
-            # import pdb;pdb.set_trace()
-            res.append(outputs)
+            if gen_kwargs["return_dict_in_generate"]:
+                scores = output_ids.scores
+                scores = torch.stack(scores).reshape(len(scores), -1).transpose(0, 1)
+
+                scores = scores.reshape(-1, scores.shape[0], scores.shape[-1])
+                scores = torch.nn.functional.log_softmax(scores, dim=1)
+                scores = scores.reshape(-1, scores.shape[-1]).cpu().numpy()
+                probs = np.exp(scores)
+                tokens_dict = {}
+                for i in range(output_ids.sequences.shape[-1]):
+                    out_token = self.tokenizer.decode(output_ids.sequences[0, i].item())
+                    tokens_dict[i] = {'token': out_token}
+                for i in range(output_ids.sequences.shape[-1]):
+                    top5_token_list, top5_prob_list = [], []
+                    for tok_id in np.argsort(scores[:, i]).tolist()[::-1][:5]:
+                        tok = self.tokenizer.decode(tok_id)
+                        score = scores[tok_id, i]
+                        prob = np.exp(score)
+                        top5_token_list.append(tok)
+                        top5_prob_list.append(prob)
+                    tokens_dict[i]['top5_tokens'] = top5_token_list
+                    tokens_dict[i]['top5_probs'] = top5_prob_list
+                    tokens_dict[i]['avg_prob'] = np.mean(probs[:, i])
+                    tokens_dict[i]['std_prob'] = np.std(probs[:, i])
+
+                response = self.tokenizer.batch_decode(output_ids.sequences, skip_special_tokens=True)[0].strip()
+                output_dict = {
+                    "response": response,
+                    "num_tokens": output_ids.sequences.shape[-1],
+                    "tokens": tokens_dict
+                }
+                output_ids = output_ids.sequences
+                res.append(output_dict)
+            else:
+                outputs = self.tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0].strip()
+                eval_logger.debug(f"Question: {cur_prompt}")
+                eval_logger.debug(f"Answer: {outputs}")
+                res.append(outputs)
             pbar.update(1)
         return res
 
+
+    def inference(self, video_info, sampling_frames_info, context, gen_kwargs):
+        if "frames_idxs" in sampling_frames_info:
+            frames_idxs = sampling_frames_info["frames_idxs"]
+        else:
+            frames_idxs = None
+        try:
+            frames, frames_times, video_time = self.load_video(video_info, max_num_frames=sampling_frames_info['num_frames'], window_time=sampling_frames_info['window'], num_tiles=sampling_frames_info['num_tiles'], frames_idxs=frames_idxs)
+        except Exception as e:
+            eval_logger.info(f"{e}")
+            eval_logger.info(f"Video {video_info['path']} can not load, check the source")
+            return None
+        if len(frames) == 0:
+            print("No frames loaded for window:", sampling_frames_info['window'], "in video:", video_info['path'], "of total duration:", video_info["total_duration"])
+            return None
+        
+        videos = []
+        video = self._image_processor.preprocess(frames, return_tensors="pt")["pixel_values"].cuda()
+        if self.torch_dtype == "bfloat16":
+            video = video.bfloat16()
+        else:
+            video = video.half()
+        videos.append(video)
+            
+        qs = context
+
+        if self.model.config.mm_use_im_start_end:
+            qs = DEFAULT_IM_START_TOKEN + DEFAULT_IMAGE_TOKEN + DEFAULT_IM_END_TOKEN + "\n" + qs
+        else:
+            qs = DEFAULT_IMAGE_TOKEN * len(videos) + "\n" + qs
+
+        if "llama_3" in self.conv_template:
+            conv = copy.deepcopy(conv_templates[self.conv_template])
+        else:
+            conv = conv_templates[self.conv_template].copy()
+
+        conv.append_message(conv.roles[0], qs)
+        conv.append_message(conv.roles[1], None)
+        prompt = conv.get_prompt()
+
+        input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).cuda()
+        pad_token_ids = self.tokenizer.pad_token_id if self.tokenizer.pad_token_id is not None else self.tokenizer.eos_token_id
+        if "llama_3" in self.conv_template:
+            pad_token_ids = 0  # lmms-lab/llama3-llava-8b is trained on this pad token id. You may need to customize this for other models.
+        attention_masks = input_ids.ne(pad_token_ids).long().cuda()
+
+        stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
+        keywords = [stop_str]
+
+        stopping_criteria = KeywordsStoppingCriteria(keywords, self.tokenizer, input_ids)
+
+        cur_prompt = qs
+
+        if "max_new_tokens" not in gen_kwargs:
+            gen_kwargs["max_new_tokens"] = 1024
+        if "temperature" not in gen_kwargs:
+            gen_kwargs["temperature"] = 0
+        if "top_p" not in gen_kwargs:
+            gen_kwargs["top_p"] = None
+        if "num_beams" not in gen_kwargs:
+            gen_kwargs["num_beams"] = 1
+        if "return_dict_in_generate" not in gen_kwargs:
+            gen_kwargs["return_dict_in_generate"] = False
+        if "output_scores" not in gen_kwargs:
+            gen_kwargs["output_scores"] = False
+        if "output_logits" not in gen_kwargs:
+            gen_kwargs["output_logits"] = False
+
+        # import pdb;pdb.set_trace()
+        with torch.inference_mode():
+            output_ids = self.model.generate(
+                inputs=input_ids,
+                images=videos,
+                attention_mask=attention_masks,
+                modalities="video",
+                use_cache=self.use_cache,
+                stopping_criteria=[stopping_criteria],
+                do_sample=True if gen_kwargs["temperature"] > 0 else False,
+                temperature=gen_kwargs["temperature"],
+                top_p=gen_kwargs["top_p"],
+                num_beams=gen_kwargs["num_beams"],
+                max_new_tokens=gen_kwargs["max_new_tokens"],
+                return_dict_in_generate=gen_kwargs["return_dict_in_generate"],
+                output_scores=gen_kwargs["output_scores"],
+                output_logits=gen_kwargs["output_logits"]
+            )
+
+        if gen_kwargs["return_dict_in_generate"]:
+            scores = output_ids.scores
+            scores = torch.stack(scores).reshape(len(scores), -1).transpose(0, 1)
+
+            scores = scores.reshape(-1, scores.shape[0], scores.shape[-1])
+            scores = torch.nn.functional.log_softmax(scores, dim=1)
+            scores = scores.reshape(-1, scores.shape[-1]).cpu().numpy()
+            probs = np.exp(scores)
+
+            # print("Response without skipping special tokens:", self.tokenizer.batch_decode(output_ids.sequences, skip_special_tokens=False)[0].strip())
+            # print("Number of tokens:", output_ids.sequences.shape[-1])
+            tokens_dict = {}
+            for i in range(output_ids.sequences.shape[-1]):
+                out_token = self.tokenizer.decode(output_ids.sequences[0, i].item())
+                tokens_dict[i] = {'token': out_token}
+                # print(f"Token [{i}]: {out_token}")
+            for i in range(output_ids.sequences.shape[-1]):
+                # print(f"Top 5 tokens for token at pos {i}")
+                # print("| token | token string | log probability | probability |")
+                top5_token_list, top5_prob_list = [], []
+                for tok_id in np.argsort(scores[:, i]).tolist()[::-1][:5]:
+                    tok = self.tokenizer.decode(tok_id)
+                    score = scores[tok_id, i]
+                    prob = np.exp(score)
+                    top5_token_list.append(tok)
+                    top5_prob_list.append(prob)
+                    # print(f"| {tok_id:5d} | {tok:8s} | {score:.3f} | {prob:.2%}")
+                tokens_dict[i]['top5_tokens'] = top5_token_list
+                tokens_dict[i]['top5_probs'] = top5_prob_list
+                tokens_dict[i]['avg_prob'] = np.mean(probs[:, i])
+                tokens_dict[i]['std_prob'] = np.std(probs[:, i])
+
+            response = self.tokenizer.batch_decode(output_ids.sequences, skip_special_tokens=True)[0].strip()
+            output_dict = {
+                "response": response,
+                "num_tokens": output_ids.sequences.shape[-1],
+                "tokens": tokens_dict,
+                "frames_res": frames.shape
+            }
+            output_ids = output_ids.sequences
+            return output_dict
+        else:
+            outputs = self.tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0].strip()
+            eval_logger.debug(f"Question: {cur_prompt}")
+            eval_logger.debug(f"Answer: {outputs}")
+            return outputs
+        
     def generate_until_multi_round(self, requests) -> List[str]:
         raise NotImplementedError("TODO: Implement multi-round generation for LLaVAVid")

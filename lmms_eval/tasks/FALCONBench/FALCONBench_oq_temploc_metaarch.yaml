@@ -1,10 +1,12 @@
-task: FALCONBench_oq_temploc
-doc_to_text: !function utils.FALCONbench_doc_to_text_oq_temploc
+task: FALCONBench_oq_temploc_metaarch
+doc_to_text: !function utils.FALCONbench_doc_to_text_oq
 doc_to_target: "answer"
 generation_kwargs:
   max_new_tokens: 128
   temperature: 0
   do_sample: False
+  question_format: "oq"
+  return_tempwindow: True
 process_results: !function utils.FALCONbench_process_results_oq_temploc
 metric_list:
   - metric: gpt_eval_score_acc
