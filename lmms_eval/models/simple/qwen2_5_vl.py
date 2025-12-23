@@ -8,10 +8,10 @@ import torch
 from accelerate import Accelerator, DistributedType
 from loguru import logger as eval_logger
 from PIL import Image
-from tqdm import tqdm
-from transformers import AutoProcessor, AutoTokenizer, Qwen2_5_VLForConditionalGeneration
 from qwen_vl_utils import process_vision_info
-
+from tqdm import tqdm
+from transformers import (AutoProcessor, AutoTokenizer,
+                          Qwen2_5_VLForConditionalGeneration)
 
 from lmms_eval import utils
 from lmms_eval.api.instance import Instance
@@ -20,7 +20,8 @@ from lmms_eval.api.registry import register_model
 from lmms_eval.models.model_utils.load_video import load_video_decord
 
 try:
-    from lmms_eval.models.simple.qwen_vl_utils_local.vision_process import process_vision_info
+    from lmms_eval.models.simple.qwen_vl_utils_local.vision_process import \
+        process_vision_info
 except ImportError:
     eval_logger.warning("Failed to import qwen_vl_utils; Please install it via `pip install qwen-vl-utils`")
 
@@ -64,7 +65,7 @@ class Qwen2_5_VL(lmms):
         else:
             self._device = torch.device(f"cuda:{accelerator.local_process_index}")
             self.device_map = f"cuda:{accelerator.local_process_index}"
-        
+
         self.torch_dtype = torch.bfloat16
         if use_flash_attention_2:
             self._model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
@@ -97,7 +98,7 @@ class Qwen2_5_VL(lmms):
             self.min_pixels = eval(self.min_pixels)
         if type(self.total_pixels) == str:
             self.total_pixels = eval(self.total_pixels)
-            
+
         if accelerator.num_processes > 1:
             assert accelerator.distributed_type in [
                 DistributedType.FSDP,
@@ -176,9 +177,11 @@ class Qwen2_5_VL(lmms):
             try:
                 messages = [
                     {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": [
+                    {
+                        "role": "user",
+                        "content": [
                             {"type": "text", "text": contexts},
-                        ]
+                        ],
                     },
                 ]
 
@@ -190,16 +193,16 @@ class Qwen2_5_VL(lmms):
                     print("Blind mode")
                 else:
                     raise ValueError("Modality not supported")
-                
+
                 if self.nframes is not None:
                     messages[1]["content"][1]["nframes"] = self.nframes
-                if  self.max_pixels is not None:
+                if self.max_pixels is not None:
                     messages[1]["content"][1]["max_pixels"] = self.max_pixels
                 if self.res_width is not None:
                     messages[1]["content"][1]["resized_width"] = self.res_width
                 if self.res_height is not None:
                     messages[1]["content"][1]["resized_height"] = self.res_height
-                
+
                 text = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
                 image_inputs, video_inputs, video_kwargs = process_vision_info([messages], return_video_kwargs=True)
             except Exception as e:
@@ -211,7 +214,7 @@ class Qwen2_5_VL(lmms):
                 pbar.update(1)
                 continue
 
-            fps_inputs = video_kwargs['fps']
+            fps_inputs = video_kwargs["fps"]
             inputs = self.processor(text=[text], images=image_inputs, videos=video_inputs, fps=fps_inputs, padding=True, return_tensors="pt")
 
             if self.device_map == "auto":
@@ -244,13 +247,12 @@ class Qwen2_5_VL(lmms):
                 use_cache=self.use_cache,
                 return_dict_in_generate=gen_kwargs["return_dict_in_generate"],
                 output_scores=gen_kwargs["output_scores"],
-                output_logits=gen_kwargs["output_logits"]
+                output_logits=gen_kwargs["output_logits"],
             )
 
-            
             if gen_kwargs["return_dict_in_generate"]:
                 scores = torch.stack(output_ids.scores).reshape(len(output_ids.scores), -1).transpose(0, 1).cpu()
-                generated_ids = [out_ids[len(input_ids):] for input_ids, out_ids in zip(inputs.input_ids,  output_ids.sequences)][0].cpu()
+                generated_ids = [out_ids[len(input_ids) :] for input_ids, out_ids in zip(inputs.input_ids, output_ids.sequences)][0].cpu()
                 num_tokens = generated_ids.shape[-1]
                 scores = scores.reshape(-1, scores.shape[0], scores.shape[-1])
                 scores = torch.nn.functional.log_softmax(scores, dim=1)
@@ -262,7 +264,7 @@ class Qwen2_5_VL(lmms):
                 tokens_dict = {}
                 for i in range(num_tokens):
                     out_token = self.tokenizer.decode(generated_ids[i].item())
-                    tokens_dict[i] = {'token': out_token}
+                    tokens_dict[i] = {"token": out_token}
                     # print(f"Token [{i}]: {out_token}")
                 for i in range(num_tokens):
                     # print(f"Top 5 tokens for token at pos {i}")
@@ -275,11 +277,11 @@ class Qwen2_5_VL(lmms):
                         top5_token_list.append(tok)
                         top5_prob_list.append(prob)
                         # print(f"| {tok_id:5d} | {tok:8s} | {score:.3f} | {prob:.2%}")
-                    tokens_dict[i]['top5_tokens'] = top5_token_list
-                    tokens_dict[i]['top5_probs'] = top5_prob_list
-                    tokens_dict[i]['avg_prob'] = np.mean(probs[:, i])
-                    tokens_dict[i]['std_prob'] = np.std(probs[:, i])
-        
+                    tokens_dict[i]["top5_tokens"] = top5_token_list
+                    tokens_dict[i]["top5_probs"] = top5_prob_list
+                    tokens_dict[i]["avg_prob"] = np.mean(probs[:, i])
+                    tokens_dict[i]["std_prob"] = np.std(probs[:, i])
+
                 output_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True)
                 output_text = "".join(output_text)
                 output_dict = {
@@ -291,8 +293,8 @@ class Qwen2_5_VL(lmms):
                 print("Response in dict:", output_text)
                 res.append(output_dict)
                 del scores
-            else:       
-                generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(inputs.input_ids, output_ids)]
+            else:
+                generated_ids = [output_ids[len(input_ids) :] for input_ids, output_ids in zip(inputs.input_ids, output_ids)]
                 output_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True)
                 output_text = "".join(output_text)
                 print("Response:", output_text)
@@ -306,37 +308,38 @@ class Qwen2_5_VL(lmms):
 
     def inference(self, video_info, sampling_frames_info, context, gen_kwargs):
         video_path = video_info["path"]
-        
+
         try:
             messages = [
                 {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": [
+                {
+                    "role": "user",
+                    "content": [
                         {"type": "text", "text": context},
                         {"video": video_info["path"]},
-                    ]
+                    ],
                 },
             ]
             # if 'vr' in video_info:
-                # messages[1]["content"][1]["vr"] = video_info['vr']
-            if 'num_frames' in sampling_frames_info:
-                messages[1]["content"][1]["nframes"] = sampling_frames_info['num_frames']
+            # messages[1]["content"][1]["vr"] = video_info['vr']
+            if "num_frames" in sampling_frames_info:
+                messages[1]["content"][1]["nframes"] = sampling_frames_info["num_frames"]
             if self.min_pixels is not None:
                 messages[1]["content"][1]["min_pixels"] = self.min_pixels
-            if  self.max_pixels is not None:
+            if self.max_pixels is not None:
                 messages[1]["content"][1]["max_pixels"] = self.max_pixels
-            if  self.total_pixels is not None:
+            if self.total_pixels is not None:
                 messages[1]["content"][1]["total_pixels"] = self.total_pixels
-            if 'res_width' in sampling_frames_info:
-                messages[1]["content"][1]["resized_width"] = sampling_frames_info['res_width']
-            if 'res_height' in sampling_frames_info:
-                messages[1]["content"][1]["resized_height"] = sampling_frames_info['res_height']
+            if "res_width" in sampling_frames_info:
+                messages[1]["content"][1]["resized_width"] = sampling_frames_info["res_width"]
+            if "res_height" in sampling_frames_info:
+                messages[1]["content"][1]["resized_height"] = sampling_frames_info["res_height"]
             if "window" in sampling_frames_info:
                 messages[1]["content"][1]["video_start"] = sampling_frames_info["window"][0]
                 messages[1]["content"][1]["video_end"] = sampling_frames_info["window"][1]
             if "frames_idxs" in sampling_frames_info:
                 messages[1]["content"][1]["frames_idxs"] = sampling_frames_info["frames_idxs"]
 
-            
             text = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
             image_inputs, video_inputs, video_kwargs = process_vision_info([messages], return_video_kwargs=True)
         except Exception as e:
@@ -345,8 +348,7 @@ class Qwen2_5_VL(lmms):
             eval_logger.info(f"Video {video_path} can not load, check the source")
             return None
 
-
-        fps_inputs = video_kwargs['fps']
+        fps_inputs = video_kwargs["fps"]
         print("video input:", video_inputs[0].shape)
         num_frames, _, resized_height, resized_width = video_inputs[0].shape
         inputs = self.processor(text=[text], images=image_inputs, videos=video_inputs, fps=fps_inputs, padding=True, return_tensors="pt")
@@ -381,12 +383,12 @@ class Qwen2_5_VL(lmms):
             use_cache=self.use_cache,
             return_dict_in_generate=gen_kwargs["return_dict_in_generate"],
             output_scores=gen_kwargs["output_scores"],
-            output_logits=gen_kwargs["output_logits"]
+            output_logits=gen_kwargs["output_logits"],
         )
 
         if gen_kwargs["return_dict_in_generate"]:
             scores = torch.stack(output_ids.scores).reshape(len(output_ids.scores), -1).transpose(0, 1).cpu()
-            generated_ids = [out_ids[len(input_ids):] for input_ids, out_ids in zip(inputs.input_ids,  output_ids.sequences)][0].cpu()
+            generated_ids = [out_ids[len(input_ids) :] for input_ids, out_ids in zip(inputs.input_ids, output_ids.sequences)][0].cpu()
             num_tokens = generated_ids.shape[-1]
             scores = scores.reshape(-1, scores.shape[0], scores.shape[-1])
             scores = torch.nn.functional.log_softmax(scores, dim=1)
@@ -398,7 +400,7 @@ class Qwen2_5_VL(lmms):
             tokens_dict = {}
             for i in range(num_tokens):
                 out_token = self.tokenizer.decode(generated_ids[i].item())
-                tokens_dict[i] = {'token': out_token}
+                tokens_dict[i] = {"token": out_token}
                 # print(f"Token [{i}]: {out_token}")
             for i in range(num_tokens):
                 # print(f"Top 5 tokens for token at pos {i}")
@@ -411,11 +413,11 @@ class Qwen2_5_VL(lmms):
                     top5_token_list.append(tok)
                     top5_prob_list.append(prob)
                     # print(f"| {tok_id:5d} | {tok:8s} | {score:.3f} | {prob:.2%}")
-                tokens_dict[i]['top5_tokens'] = top5_token_list
-                tokens_dict[i]['top5_probs'] = top5_prob_list
-                tokens_dict[i]['avg_prob'] = np.mean(probs[:, i])
-                tokens_dict[i]['std_prob'] = np.std(probs[:, i])
-    
+                tokens_dict[i]["top5_tokens"] = top5_token_list
+                tokens_dict[i]["top5_probs"] = top5_prob_list
+                tokens_dict[i]["avg_prob"] = np.mean(probs[:, i])
+                tokens_dict[i]["std_prob"] = np.std(probs[:, i])
+
             output_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True)
             output_text = "".join(output_text)
             output_dict = {
@@ -426,14 +428,14 @@ class Qwen2_5_VL(lmms):
             }
             res = output_dict
             del scores
-        else:       
-            generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(inputs.input_ids, output_ids)]
+        else:
+            generated_ids = [output_ids[len(input_ids) :] for input_ids, output_ids in zip(inputs.input_ids, output_ids)]
             output_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True)
             output_text = "".join(output_text)
             res = output_text
         del output_ids, inputs, image_inputs, video_inputs
         torch.cuda.empty_cache()
         return res
-    
+
     def generate_until_multi_round(self, requests) -> List[str]:
         raise NotImplementedError("TODO: Implement multi-round generation")

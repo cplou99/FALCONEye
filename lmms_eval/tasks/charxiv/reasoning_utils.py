@@ -2,11 +2,9 @@ import json
 import os
 from copy import deepcopy
 
-from lmms_eval.tasks.charxiv.constant import (
-    REASONING_GRADING_INST,
-    REASONING_GRADING_PREFIX,
-    REASONING_RESP_INST,
-)
+from lmms_eval.tasks.charxiv.constant import (REASONING_GRADING_INST,
+                                              REASONING_GRADING_PREFIX,
+                                              REASONING_RESP_INST)
 
 
 def get_reasoning_result_gpt(client, prompt, max_retries=10):

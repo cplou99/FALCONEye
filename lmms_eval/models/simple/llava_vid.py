@@ -8,23 +8,15 @@ import torch
 from accelerate import Accelerator, DistributedType, InitProcessGroupKwargs
 from accelerate.state import AcceleratorState
 from decord import VideoReader, cpu
-from llava.constants import (
-    DEFAULT_IM_END_TOKEN,
-    DEFAULT_IM_START_TOKEN,
-    DEFAULT_IMAGE_TOKEN,
-    IGNORE_INDEX,
-    IMAGE_TOKEN_INDEX,
-)
+from llava.constants import (DEFAULT_IM_END_TOKEN, DEFAULT_IM_START_TOKEN,
+                             DEFAULT_IMAGE_TOKEN, IGNORE_INDEX,
+                             IMAGE_TOKEN_INDEX)
 from llava.conversation import SeparatorStyle, conv_templates
-from llava.mm_utils import (
-    KeywordsStoppingCriteria,
-    get_model_name_from_path,
-    tokenizer_image_token,
-)
+from llava.mm_utils import (KeywordsStoppingCriteria, get_model_name_from_path,
+                            tokenizer_image_token)
 from llava.model.builder import load_pretrained_model
 from llava.model.language_model.llava_llama import LlavaConfig
 from llava.model.language_model.llava_qwen import LlavaQwenConfig
-
 # eval_logger = logging.getLogger("lmms-eval")
 # import sys;sys.path.append("llava-video")
 from loguru import logger as eval_logger
@@ -364,7 +356,6 @@ class LlavaVid(lmms):
         resized_image = image.resize(size, Image.BICUBIC)  # Resize to target size
         return np.array(resized_image)  # Convert back to NumPy array
 
-
     def get_video_info(self, video_file):
         from decord import VideoReader
 
@@ -375,7 +366,6 @@ class LlavaVid(lmms):
         video_time = total_frames / fps
         video_info = {"vr": vr, "fps": fps, "total_frames": total_frames, "total_duration": video_time, "path": video_file}
         return video_info
-    
 
     def load_video(self, video_info, max_num_frames, window_time=None, num_tiles=None, frames_idxs=None):
 
@@ -392,7 +382,7 @@ class LlavaVid(lmms):
                 start_time, end_time = window_time[0], window_time[1]
                 end_time = min(end_time, video_time)
                 start_frame, end_frame = int(start_time * fps), int(end_time * fps)
-                total_window_frames = int((end_time - start_time) * fps) 
+                total_window_frames = int((end_time - start_time) * fps)
                 num_frames = min(max_num_frames, total_window_frames)
                 frame_indices = [int(total_window_frames / num_frames) * i + start_frame for i in range(num_frames)]
         else:
@@ -406,7 +396,6 @@ class LlavaVid(lmms):
             frames = frames.asnumpy()
         frame_timestamps = [frame_index / fps for frame_index in frame_indices]
         frame_timestamps = ",".join([f"{i:.2f}s" for i in frame_timestamps])
-
 
         if num_tiles is not None:
             # For each frame, split into tiles and include the resized original frame and tiles
@@ -425,7 +414,6 @@ class LlavaVid(lmms):
             frames = np.array(all_frames_with_tiles)  # Convert to a NumPy array
 
         return frames, frame_timestamps, video_time
-    
 
     def tok_decode(self, tokens):
         return self.tokenizer.decode(tokens)
@@ -565,11 +553,13 @@ class LlavaVid(lmms):
             qs = contexts
             # import pdb;pdb.set_trace()
             if self.add_time_instruction:
-                if self.num_tiles is not None: 
+                if self.num_tiles is not None:
                     sent_tiles = f"with {self.num_tiles} tiles per frame"
-                else: 
+                else:
                     sent_tiles = ""
-                time_instruciton = f"The video lasts for {video_time:.2f} seconds, and {len(video)} frames are uniformly sampled from it. These frames are located at {frame_time} {sent_tiles}.Please answer the following questions related to this video."
+                time_instruciton = (
+                    f"The video lasts for {video_time:.2f} seconds, and {len(video)} frames are uniformly sampled from it. These frames are located at {frame_time} {sent_tiles}.Please answer the following questions related to this video."
+                )
                 qs = f"{time_instruciton}\n{qs}"
             if self.model.config.mm_use_im_start_end:
                 qs = DEFAULT_IM_START_TOKEN + DEFAULT_IMAGE_TOKEN + DEFAULT_IM_END_TOKEN + "\n" + qs
@@ -589,7 +579,7 @@ class LlavaVid(lmms):
             input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).cuda()
             pad_token_ids = self.tokenizer.pad_token_id if self.tokenizer.pad_token_id is not None else self.tokenizer.eos_token_id
             if "llama_3" in self.conv_template:
-                pad_token_ids = 0 
+                pad_token_ids = 0
             attention_masks = input_ids.ne(pad_token_ids).long().cuda()
 
             stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
@@ -616,7 +606,7 @@ class LlavaVid(lmms):
 
             if videos == []:
                 videos = None
-                
+
             with torch.inference_mode():
                 output_ids = self.model.generate(
                     inputs=input_ids,
@@ -632,7 +622,7 @@ class LlavaVid(lmms):
                     max_new_tokens=gen_kwargs["max_new_tokens"],
                     return_dict_in_generate=gen_kwargs["return_dict_in_generate"],
                     output_scores=gen_kwargs["output_scores"],
-                    output_logits=gen_kwargs["output_logits"]
+                    output_logits=gen_kwargs["output_logits"],
                 )
 
             if gen_kwargs["return_dict_in_generate"]:
@@ -646,7 +636,7 @@ class LlavaVid(lmms):
                 tokens_dict = {}
                 for i in range(output_ids.sequences.shape[-1]):
                     out_token = self.tokenizer.decode(output_ids.sequences[0, i].item())
-                    tokens_dict[i] = {'token': out_token}
+                    tokens_dict[i] = {"token": out_token}
                 for i in range(output_ids.sequences.shape[-1]):
                     top5_token_list, top5_prob_list = [], []
                     for tok_id in np.argsort(scores[:, i]).tolist()[::-1][:5]:
@@ -655,17 +645,13 @@ class LlavaVid(lmms):
                         prob = np.exp(score)
                         top5_token_list.append(tok)
                         top5_prob_list.append(prob)
-                    tokens_dict[i]['top5_tokens'] = top5_token_list
-                    tokens_dict[i]['top5_probs'] = top5_prob_list
-                    tokens_dict[i]['avg_prob'] = np.mean(probs[:, i])
-                    tokens_dict[i]['std_prob'] = np.std(probs[:, i])
+                    tokens_dict[i]["top5_tokens"] = top5_token_list
+                    tokens_dict[i]["top5_probs"] = top5_prob_list
+                    tokens_dict[i]["avg_prob"] = np.mean(probs[:, i])
+                    tokens_dict[i]["std_prob"] = np.std(probs[:, i])
 
                 response = self.tokenizer.batch_decode(output_ids.sequences, skip_special_tokens=True)[0].strip()
-                output_dict = {
-                    "response": response,
-                    "num_tokens": output_ids.sequences.shape[-1],
-                    "tokens": tokens_dict
-                }
+                output_dict = {"response": response, "num_tokens": output_ids.sequences.shape[-1], "tokens": tokens_dict}
                 output_ids = output_ids.sequences
                 res.append(output_dict)
             else:
@@ -676,22 +662,21 @@ class LlavaVid(lmms):
             pbar.update(1)
         return res
 
-
     def inference(self, video_info, sampling_frames_info, context, gen_kwargs):
         if "frames_idxs" in sampling_frames_info:
             frames_idxs = sampling_frames_info["frames_idxs"]
         else:
             frames_idxs = None
         try:
-            frames, frames_times, video_time = self.load_video(video_info, max_num_frames=sampling_frames_info['num_frames'], window_time=sampling_frames_info['window'], num_tiles=sampling_frames_info['num_tiles'], frames_idxs=frames_idxs)
+            frames, frames_times, video_time = self.load_video(video_info, max_num_frames=sampling_frames_info["num_frames"], window_time=sampling_frames_info["window"], num_tiles=sampling_frames_info["num_tiles"], frames_idxs=frames_idxs)
         except Exception as e:
             eval_logger.info(f"{e}")
             eval_logger.info(f"Video {video_info['path']} can not load, check the source")
             return None
         if len(frames) == 0:
-            print("No frames loaded for window:", sampling_frames_info['window'], "in video:", video_info['path'], "of total duration:", video_info["total_duration"])
+            print("No frames loaded for window:", sampling_frames_info["window"], "in video:", video_info["path"], "of total duration:", video_info["total_duration"])
             return None
-        
+
         videos = []
         video = self._image_processor.preprocess(frames, return_tensors="pt")["pixel_values"].cuda()
         if self.torch_dtype == "bfloat16":
@@ -699,7 +684,7 @@ class LlavaVid(lmms):
         else:
             video = video.half()
         videos.append(video)
-            
+
         qs = context
 
         if self.model.config.mm_use_im_start_end:
@@ -760,7 +745,7 @@ class LlavaVid(lmms):
                 max_new_tokens=gen_kwargs["max_new_tokens"],
                 return_dict_in_generate=gen_kwargs["return_dict_in_generate"],
                 output_scores=gen_kwargs["output_scores"],
-                output_logits=gen_kwargs["output_logits"]
+                output_logits=gen_kwargs["output_logits"],
             )
 
         if gen_kwargs["return_dict_in_generate"]:
@@ -777,7 +762,7 @@ class LlavaVid(lmms):
             tokens_dict = {}
             for i in range(output_ids.sequences.shape[-1]):
                 out_token = self.tokenizer.decode(output_ids.sequences[0, i].item())
-                tokens_dict[i] = {'token': out_token}
+                tokens_dict[i] = {"token": out_token}
                 # print(f"Token [{i}]: {out_token}")
             for i in range(output_ids.sequences.shape[-1]):
                 # print(f"Top 5 tokens for token at pos {i}")
@@ -790,18 +775,13 @@ class LlavaVid(lmms):
                     top5_token_list.append(tok)
                     top5_prob_list.append(prob)
                     # print(f"| {tok_id:5d} | {tok:8s} | {score:.3f} | {prob:.2%}")
-                tokens_dict[i]['top5_tokens'] = top5_token_list
-                tokens_dict[i]['top5_probs'] = top5_prob_list
-                tokens_dict[i]['avg_prob'] = np.mean(probs[:, i])
-                tokens_dict[i]['std_prob'] = np.std(probs[:, i])
+                tokens_dict[i]["top5_tokens"] = top5_token_list
+                tokens_dict[i]["top5_probs"] = top5_prob_list
+                tokens_dict[i]["avg_prob"] = np.mean(probs[:, i])
+                tokens_dict[i]["std_prob"] = np.std(probs[:, i])
 
             response = self.tokenizer.batch_decode(output_ids.sequences, skip_special_tokens=True)[0].strip()
-            output_dict = {
-                "response": response,
-                "num_tokens": output_ids.sequences.shape[-1],
-                "tokens": tokens_dict,
-                "frames_res": frames.shape
-            }
+            output_dict = {"response": response, "num_tokens": output_ids.sequences.shape[-1], "tokens": tokens_dict, "frames_res": frames.shape}
             output_ids = output_ids.sequences
             return output_dict
         else:
@@ -809,6 +789,6 @@ class LlavaVid(lmms):
             eval_logger.debug(f"Question: {cur_prompt}")
             eval_logger.debug(f"Answer: {outputs}")
             return outputs
-        
+
     def generate_until_multi_round(self, requests) -> List[str]:
         raise NotImplementedError("TODO: Implement multi-round generation for LLaVAVid")

@@ -1,12 +1,10 @@
 import pandas as pd
 
 from lmms_eval.tasks._task_utils.reasoning_utils import compute_score
-from lmms_eval.tasks.wemath.wemath_utils import (
-    calculate_metrics,
-    compute_final_scores,
-    process_steps_data,
-    update_main_results_df,
-)
+from lmms_eval.tasks.wemath.wemath_utils import (calculate_metrics,
+                                                 compute_final_scores,
+                                                 process_steps_data,
+                                                 update_main_results_df)
 
 SYSTEM_PROMPT = (
     "You are a helpful assistant. When the user asks a question, your response must include two parts: "

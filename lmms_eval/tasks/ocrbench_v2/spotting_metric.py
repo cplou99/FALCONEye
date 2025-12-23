@@ -9,10 +9,7 @@ import ipdb
 
 import lmms_eval.tasks.ocrbench_v2.spotting_eval.rrc_evaluation_funcs_1_1 as rrc_evaluation_funcs
 from lmms_eval.tasks.ocrbench_v2.spotting_eval.script import (
-    default_evaluation_params,
-    evaluate_method,
-    validate_data,
-)
+    default_evaluation_params, evaluate_method, validate_data)
 
 
 def extract_bounding_boxes_robust(predict_str):

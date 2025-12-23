@@ -23,19 +23,12 @@ from lmms_eval.api.registry import register_model
 eval_logger = logging.getLogger("lmms-eval")
 # import sys;sys.path.append("llava-video")
 try:
-    from llava.constants import (
-        DEFAULT_IM_END_TOKEN,
-        DEFAULT_IM_START_TOKEN,
-        DEFAULT_IMAGE_TOKEN,
-        IMAGE_TOKEN_INDEX,
-    )
+    from llava.constants import (DEFAULT_IM_END_TOKEN, DEFAULT_IM_START_TOKEN,
+                                 DEFAULT_IMAGE_TOKEN, IMAGE_TOKEN_INDEX)
     from llava.conversation import SeparatorStyle, conv_templates
-    from llava.mm_utils import (
-        KeywordsStoppingCriteria,
-        get_model_name_from_path,
-        process_images,
-        tokenizer_image_token,
-    )
+    from llava.mm_utils import (KeywordsStoppingCriteria,
+                                get_model_name_from_path, process_images,
+                                tokenizer_image_token)
     from llava.model.builder import load_pretrained_model
 except ImportError as e:
     raise ImportError(f"VILA is not installed. Please install VILA to use this model. Error: {e}")

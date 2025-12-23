@@ -9,6 +9,7 @@ import time
 import warnings
 from functools import lru_cache
 from io import BytesIO
+from typing import Optional
 
 import requests
 import torch
@@ -17,8 +18,6 @@ from packaging import version
 from PIL import Image
 from torchvision import io, transforms
 from torchvision.transforms import InterpolationMode
-from typing import Optional
-
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +30,7 @@ MAX_RATIO = 200
 
 # VIDEO_MIN_PIXELS = 128 * 28 * 28
 # VIDEO_MAX_PIXELS = 768 * 28 * 28
-VIDEO_MIN_PIXELS =  128 * 28 * 28
+VIDEO_MIN_PIXELS = 128 * 28 * 28
 VIDEO_MAX_PIXELS = 16384 * 28 * 28
 FRAME_FACTOR = 2
 FPS = 2.0
@@ -41,7 +40,7 @@ FPS_MAX_FRAMES = 768
 # Set the maximum number of video token inputs.
 # Here, 128K represents the maximum number of input tokens for the VLLM model.
 # Remember to adjust it according to your own configuration.
-VIDEO_TOTAL_PIXELS = int(float(os.environ.get('VIDEO_MAX_PIXELS', 128000 * 28 * 28 * 0.9)))
+VIDEO_TOTAL_PIXELS = int(float(os.environ.get("VIDEO_MAX_PIXELS", 128000 * 28 * 28 * 0.9)))
 logger.info(f"set VIDEO_TOTAL_PIXELS: {VIDEO_TOTAL_PIXELS}")
 
 
@@ -60,9 +59,7 @@ def floor_by_factor(number: int, factor: int) -> int:
     return math.floor(number / factor) * factor
 
 
-def smart_resize(
-    height: int, width: int, factor: int = IMAGE_FACTOR, min_pixels: int = MIN_PIXELS, max_pixels: int = MAX_PIXELS
-) -> tuple[int, int]:
+def smart_resize(height: int, width: int, factor: int = IMAGE_FACTOR, min_pixels: int = MIN_PIXELS, max_pixels: int = MAX_PIXELS) -> tuple[int, int]:
     """
     Rescales the image so that the following conditions are met:
 
@@ -73,9 +70,7 @@ def smart_resize(
     3. The aspect ratio of the image is maintained as closely as possible.
     """
     if max(height, width) / min(height, width) > MAX_RATIO:
-        raise ValueError(
-            f"absolute aspect ratio must be smaller than {MAX_RATIO}, got {max(height, width) / min(height, width)}"
-        )
+        raise ValueError(f"absolute aspect ratio must be smaller than {MAX_RATIO}, got {max(height, width) / min(height, width)}")
     h_bar = max(factor, round_by_factor(height, factor))
     w_bar = max(factor, round_by_factor(width, factor))
     if h_bar * w_bar > max_pixels:
@@ -90,12 +85,12 @@ def smart_resize(
 
 
 def to_rgb(pil_image: Image.Image) -> Image.Image:
-      if pil_image.mode == 'RGBA':
-          white_background = Image.new("RGB", pil_image.size, (255, 255, 255))
-          white_background.paste(pil_image, mask=pil_image.split()[3])  # Use alpha channel as mask
-          return white_background
-      else:
-          return pil_image.convert("RGB")
+    if pil_image.mode == "RGBA":
+        white_background = Image.new("RGB", pil_image.size, (255, 255, 255))
+        white_background.paste(pil_image, mask=pil_image.split()[3])  # Use alpha channel as mask
+        return white_background
+    else:
+        return pil_image.convert("RGB")
 
 
 def fetch_image(ele: dict[str, str | Image.Image], size_factor: int = IMAGE_FACTOR) -> Image.Image:
@@ -242,16 +237,17 @@ def _read_video_decord(
         torch.Tensor: the video tensor with shape (T, C, H, W).
     """
     import decord
+
     video_path = ele["video"]
     vr = decord.VideoReader(video_path)
-  
+
     # Already implemented by cplou
-    if 'video_start' in ele or 'video_end' in ele:
+    if "video_start" in ele or "video_end" in ele:
         total_frames, video_fps = len(vr), vr.get_avg_fps()
-        window_time = ele['video_end'] - ele['video_start']
+        window_time = ele["video_end"] - ele["video_start"]
         total_frames = int(window_time * video_fps)
-        video_start_frame = int(ele['video_start'] * video_fps)
-        video_end_frame = int(ele['video_end'] * video_fps)
+        video_start_frame = int(ele["video_start"] * video_fps)
+        video_end_frame = int(ele["video_end"] * video_fps)
         nframes = smart_nframes(ele, total_frames=total_frames, video_fps=video_fps)
         idx = torch.linspace(video_start_frame, video_end_frame - 1, nframes).round().long().tolist()
     elif "frames_idxs" in ele:
@@ -262,8 +258,7 @@ def _read_video_decord(
         total_frames, video_fps = len(vr), vr.get_avg_fps()
         nframes = smart_nframes(ele, total_frames=total_frames, video_fps=video_fps)
         idx = torch.linspace(0, total_frames - 1, nframes).round().long().tolist()
-    
-    
+
     video = vr.get_batch(idx).asnumpy()
     video = torch.tensor(video).permute(0, 3, 1, 2)  # Convert to TCHW format
     sample_fps = nframes / max(total_frames, 1e-6) * video_fps
@@ -305,7 +300,7 @@ def fetch_video(ele: dict, image_factor: int = IMAGE_FACTOR, return_video_sample
         max_pixels = max(min(VIDEO_MAX_PIXELS, total_pixels / nframes * FRAME_FACTOR), int(min_pixels * 1.05))
         max_pixels_supposed = ele.get("max_pixels", max_pixels)
         # if max_pixels > max_pixels_supposed:
-            # logger.warning(f"The number of tokens per image [{max_pixels}] computed from the maximum number of total tokens, exceeds the limit of maximum number of tokens per image which is [{max_pixels_supposed}].")
+        # logger.warning(f"The number of tokens per image [{max_pixels}] computed from the maximum number of total tokens, exceeds the limit of maximum number of tokens per image which is [{max_pixels_supposed}].")
         max_pixels = min(max_pixels_supposed, max_pixels)
         if "resized_height" in ele and "resized_width" in ele:
             resized_height, resized_width = smart_resize(
@@ -335,10 +330,7 @@ def fetch_video(ele: dict, image_factor: int = IMAGE_FACTOR, return_video_sample
         process_info = ele.copy()
         process_info.pop("type", None)
         process_info.pop("video", None)
-        images = [
-            fetch_image({"image": video_element, **process_info}, size_factor=image_factor)
-            for video_element in ele["video"]
-        ]
+        images = [fetch_image({"image": video_element, **process_info}, size_factor=image_factor) for video_element in ele["video"]]
         nframes = ceil_by_factor(len(images), FRAME_FACTOR)
         if len(images) < nframes:
             images.extend([images[-1]] * (nframes - len(images)))
@@ -355,12 +347,7 @@ def extract_vision_info(conversations: list[dict] | list[list[dict]]) -> list[di
         for message in conversation:
             if isinstance(message["content"], list):
                 for ele in message["content"]:
-                    if (
-                        "image" in ele
-                        or "image_url" in ele
-                        or "video" in ele
-                        or ele["type"] in ("image", "image_url", "video")
-                    ):
+                    if "image" in ele or "image_url" in ele or "video" in ele or ele["type"] in ("image", "image_url", "video"):
                         vision_infos.append(ele)
     return vision_infos
 
@@ -389,5 +376,5 @@ def process_vision_info(
     if len(video_inputs) == 0:
         video_inputs = None
     if return_video_kwargs:
-        return image_inputs, video_inputs, {'fps': video_sample_fps_list}
+        return image_inputs, video_inputs, {"fps": video_sample_fps_list}
     return image_inputs, video_inputs

@@ -5,7 +5,8 @@ from typing import List
 
 import regex  # Supports the non-standard ?R regex operator
 
-from .utils import extract_answer_at_beginning_of_line, extract_code_block_content
+from .utils import (extract_answer_at_beginning_of_line,
+                    extract_code_block_content)
 
 PARSING_TIMEOUT = 0.1
 

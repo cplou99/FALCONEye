@@ -7,12 +7,10 @@ import sys
 
 from tqdm import tqdm
 from transformers import AutoTokenizer
-from videomathqa.utils import (
-    extract_characters_regex,
-    videomathqa_mcq_aggregate_results,
-    videomathqa_multi_binary_aggregate_results,
-    videomathqa_process_results,
-)
+from videomathqa.utils import (extract_characters_regex,
+                               videomathqa_mcq_aggregate_results,
+                               videomathqa_multi_binary_aggregate_results,
+                               videomathqa_process_results)
 from vllm import LLM, SamplingParams
 
 mcq_prompt = (

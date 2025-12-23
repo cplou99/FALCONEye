@@ -106,6 +106,7 @@ AVAILABLE_META_ARCHITECTURES = {
     "socratic_model": "Socratic",
 }
 
+
 def get_model(model_name, force_simple: bool = False):
     if model_name not in AVAILABLE_SIMPLE_MODELS and model_name not in AVAILABLE_CHAT_TEMPLATE_MODELS and model_name not in AVAILABLE_META_ARCHITECTURES:
         raise ValueError(f"Model {model_name} not found in available models.")

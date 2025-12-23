@@ -1,51 +1,51 @@
+import copy
+import gc
+import json
 import math
 import os
-from datetime import timedelta
+import pickle
 import random
+import subprocess
+import time
+from datetime import timedelta
 from typing import List, Optional, Tuple, Union
 
 import numpy as np
-import torch
-import copy
-import json
-import time
-import subprocess
-import gc
 import psutil
-import pickle
-
+import torch
 from accelerate import Accelerator, DistributedType, InitProcessGroupKwargs
 from accelerate.state import AcceleratorState
 from decord import VideoReader, cpu
-
-
-
 # eval_logger = logging.getLogger("lmms-eval")
 # import sys;sys.path.append("llava-video")
 from loguru import logger as eval_logger
 from PIL import Image
+from pydantic import BaseModel
 from tqdm import tqdm
 from transformers import AutoConfig, AutoModelForCausalLM
 
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
+from lmms_eval.models import get_model
 from lmms_eval.models.model_utils.load_video import read_video_pyav
 from lmms_eval.utils import handle_arg_string
-from lmms_eval.models import get_model
-from pydantic import BaseModel
+
 
 class TimeWindow(BaseModel):
     start: float
     end: float
 
+
 class Scene(BaseModel):
     explanation: str
     cliptimeinterval: TimeWindow
 
+
 class VideoReasoning(BaseModel):
     scenes: list[Scene]
-        
+
+
 @register_model("falcon_eye")
 class FALCONEye(lmms):
     """
@@ -60,7 +60,7 @@ class FALCONEye(lmms):
         llm_reasoning_config: str,
         flash_mode: Optional[bool] = False,
         trust_in_confidence_mode: Optional[bool] = False,
-        frames_sampling_strategy: Optional[str] = "uniform", # ffmpeg_keyframes, resnet_keyframes
+        frames_sampling_strategy: Optional[str] = "uniform",  # ffmpeg_keyframes, resnet_keyframes
         max_num_vqa_inf: Optional[int] = 45,
         max_returned_window_size: Optional[int] = 60,
         conf_thres_w_options: Optional[float] = 0.9,
@@ -86,7 +86,7 @@ class FALCONEye(lmms):
         uniform_minwindow2caption: Optional[int] = 5,
         random_vqa_candidates: Optional[bool] = False,
         llm_return_logprobs: Optional[bool] = False,
-        batch_size: Optional[int] = 1, 
+        batch_size: Optional[int] = 1,
         vlm_device: Optional[str] = "cuda",
         llm_reasoning_device: Optional[str] = "cuda",
         device: Optional[str] = "cuda",
@@ -121,7 +121,7 @@ class FALCONEye(lmms):
         self.captions_dir = captions_dir
         self.vqa_dir = vqa_dir
         self.llm_reasons_dir = llm_reasons_dir
-       
+
         self.load_captions = load_captions
         self.save_captions = save_captions
         self.load_vqa = load_vqa
@@ -137,13 +137,13 @@ class FALCONEye(lmms):
 
         self.vlm_config = self.vlm_config[1:-1].replace(";", ",").replace("#", "=")
         self.vlm = vlm_ModelClass.create_from_arg_string(
-           self.vlm_config,
+            self.vlm_config,
             {
                 "batch_size": batch_size,
                 "device": self.vlm_device,
             },
         )
-        
+
         if "3B" in self.vlm_config:
             self.vlm_name = self.vlm_name + "_3B"
 
@@ -168,11 +168,11 @@ class FALCONEye(lmms):
         self.vlm_key_caption_prompt = "".join([w[0] for w in self.vlm_caption_prompt.split(" ")])
         self.vlm_description_prompt = "Provide a general description of the video."
         self.vlm_caption_max_new_tokens = vlm_caption_max_new_tokens
- 
+
         llm_reasoning_ModelClass = get_model(self.llm_reasoning_name)
         self.llm_reasoning_config = self.llm_reasoning_config[1:-1].replace(";", ",").replace("#", "=")
         self.llm_reasoning = llm_reasoning_ModelClass.create_from_arg_string(
-           self.llm_reasoning_config,
+            self.llm_reasoning_config,
             {
                 "batch_size": batch_size,
                 "device": self.llm_reasoning_device,
@@ -184,18 +184,18 @@ class FALCONEye(lmms):
 
         self.llm_reasoning_prompt1 = "You are a helpful video question answering assistant. The user provides some captions of the video with a question to be answered."
         self.llm_reasoning_prompt2 = "Identify and return the top5 scenes from the list above that are most likely to contain the visual information needed to answer the question."
-        
+
         self.llm_resp_format = VideoReasoning
         self.llm_return_logprobs = llm_return_logprobs
         self.max_num_vqa_inf = max_num_vqa_inf
-        self.frames_sampling_strategy = frames_sampling_strategy   
+        self.frames_sampling_strategy = frames_sampling_strategy
         self.conf_thres = None
         self.conf_thres_w_options = conf_thres_w_options
         self.conf_thres_wo_options = conf_thres_wo_options
-        
+
         self.min_window_duration2vqa = min_window_duration
         self.min_window_duration2caption = min_window_duration
-        self.min_window_duration2reason = 4*min_window_duration
+        self.min_window_duration2reason = 4 * min_window_duration
 
         self.ffmpeg_scene_threshold = ffmpeg_scene_threshold
         self.ffmpeg_min_segments = ffmpeg_min_segments
@@ -216,18 +216,18 @@ class FALCONEye(lmms):
         os.makedirs(self.captions_dir, exist_ok=True)
         os.makedirs(self.vqa_dir, exist_ok=True)
         os.makedirs(self.llm_reasons_dir, exist_ok=True)
-        
+
         if not hasattr(self.vlm, "inference"):
             raise AttributeError(f"Class '{self.vlm.__name__}' does not have a function 'inference'. This function should act as generate_until but for a unique question and a video. Refer to qwen-2_5_vl.py as example.")
         if not hasattr(self.llm_reasoning, "get_llm_response"):
             raise AttributeError(f"Class '{self.llm_reasoning.__name__}' does not have a function 'get_llm_response'. This function should act as generate_until but for a unique question. Refer to gpt4v.py as example.")
-            
+
     def save_llm_reasons_func(self, filename, key, value):
         cache_llm_file = os.path.join(self.llm_reasons_dir, f"{filename}.pkl")
         self.curr_llm_reasons[key.encode()] = value.encode()
         with open(cache_llm_file, "wb") as f:
             pickle.dump(self.curr_llm_reasons, f)
-    
+
     def load_llm_reasons_func(self, filename, key):
         if filename != self.curr_llm_filename or self.curr_llm_reasons is None:
             cache_llm_file = os.path.join(self.llm_reasons_dir, f"{filename}.pkl")
@@ -256,24 +256,26 @@ class FALCONEye(lmms):
             video_llm_reasons_path = os.path.join(self.dir_save_llm_reasonings, f"{filename}.json")
             # Load existing data if the file exists
             if os.path.exists(video_llm_reasons_path):
-                with open(video_llm_reasons_path, 'r') as f:
+                with open(video_llm_reasons_path, "r") as f:
                     video_llm_reasons = json.load(f)
             else:
                 video_llm_reasons = {}
             return video_llm_reasons
-    
+
     def save_summary_func(self, filename, summary):
         captions_dir = os.path.join(self.captions_dir, filename)
         os.makedirs(captions_dir, exist_ok=True)
 
         if self.frames_sampling_strategy == "ffmpeg_keyframes":
-            captions_filename = f'{self.vlm_name}_{self.frames_sampling_strategy}_thres{self.ffmpeg_scene_threshold}_maxseg{self.ffmpeg_max_segments}_minseg{self.ffmpeg_min_segments}_toks{self.vlm_caption_max_new_tokens}_{self.vlm_key_caption_prompt}.json'
+            captions_filename = (
+                f"{self.vlm_name}_{self.frames_sampling_strategy}_thres{self.ffmpeg_scene_threshold}_maxseg{self.ffmpeg_max_segments}_minseg{self.ffmpeg_min_segments}_toks{self.vlm_caption_max_new_tokens}_{self.vlm_key_caption_prompt}.json"
+            )
         elif self.frames_sampling_strategy == "uniform":
-            captions_filename = f'{self.vlm_name}_{self.frames_sampling_strategy}_window{self.window_span}s_fmin{self.vlm_caption_min_num_frames}_fmax{self.vlm_caption_max_num_frames}_toks{self.vlm_caption_max_new_tokens}_{self.vlm_key_caption_prompt}.json'
+            captions_filename = f"{self.vlm_name}_{self.frames_sampling_strategy}_window{self.window_span}s_fmin{self.vlm_caption_min_num_frames}_fmax{self.vlm_caption_max_num_frames}_toks{self.vlm_caption_max_new_tokens}_{self.vlm_key_caption_prompt}.json"
         else:
             raise NotImplementedError
-        
-        summary_filename = f'summary_{captions_filename}'
+
+        summary_filename = f"summary_{captions_filename}"
         summary_path = os.path.join(captions_dir, summary_filename)
         with open(summary_path, "w") as f:
             json.dump(summary, f)
@@ -281,13 +283,15 @@ class FALCONEye(lmms):
     def load_summary_func(self, filename):
         captions_dir = os.path.join(self.captions_dir, filename)
         if self.frames_sampling_strategy == "ffmpeg_keyframes":
-            captions_filename = f'{self.vlm_name}_{self.frames_sampling_strategy}_thres{self.ffmpeg_scene_threshold}_maxseg{self.ffmpeg_max_segments}_minseg{self.ffmpeg_min_segments}_toks{self.vlm_caption_max_new_tokens}_{self.vlm_key_caption_prompt}.json'
+            captions_filename = (
+                f"{self.vlm_name}_{self.frames_sampling_strategy}_thres{self.ffmpeg_scene_threshold}_maxseg{self.ffmpeg_max_segments}_minseg{self.ffmpeg_min_segments}_toks{self.vlm_caption_max_new_tokens}_{self.vlm_key_caption_prompt}.json"
+            )
         elif self.frames_sampling_strategy == "uniform":
-            captions_filename = f'{self.vlm_name}_{self.frames_sampling_strategy}_window{self.window_span}s_fmin{self.vlm_caption_min_num_frames}_fmax{self.vlm_caption_max_num_frames}_toks{self.vlm_caption_max_new_tokens}_{self.vlm_key_caption_prompt}.json'
+            captions_filename = f"{self.vlm_name}_{self.frames_sampling_strategy}_window{self.window_span}s_fmin{self.vlm_caption_min_num_frames}_fmax{self.vlm_caption_max_num_frames}_toks{self.vlm_caption_max_new_tokens}_{self.vlm_key_caption_prompt}.json"
         else:
             raise NotImplementedError
 
-        summary_filename = f'summary_{captions_filename}'
+        summary_filename = f"summary_{captions_filename}"
         summary_path = os.path.join(captions_dir, summary_filename)
 
         if os.path.isfile(summary_path):
@@ -296,7 +300,7 @@ class FALCONEye(lmms):
         else:
             summary_dict = None
         return summary_dict
-    
+
     def load_captions_func(self, filename):
         if filename == self.curr_filename and self.curr_captions_dict is not None:
             return self.curr_captions_dict
@@ -305,9 +309,9 @@ class FALCONEye(lmms):
             os.makedirs(captions_dir, exist_ok=True)
 
             if self.frames_sampling_strategy == "ffmpeg_keyframes":
-                captions_filename = f'{self.vlm_name}_{self.frames_sampling_strategy}_thres{self.ffmpeg_scene_threshold}_maxseg{self.ffmpeg_max_segments}_minseg{self.ffmpeg_min_segments}_toks{self.vlm_caption_max_new_tokens}_{self.vlm_key_caption_prompt}.json'
+                captions_filename = f"{self.vlm_name}_{self.frames_sampling_strategy}_thres{self.ffmpeg_scene_threshold}_maxseg{self.ffmpeg_max_segments}_minseg{self.ffmpeg_min_segments}_toks{self.vlm_caption_max_new_tokens}_{self.vlm_key_caption_prompt}.json"
             elif self.frames_sampling_strategy == "uniform":
-                captions_filename = f'{self.vlm_name}_{self.frames_sampling_strategy}_window{self.window_span}s_fmin{self.vlm_caption_min_num_frames}_fmax{self.vlm_caption_max_num_frames}_toks{self.vlm_caption_max_new_tokens}_{self.vlm_key_caption_prompt}.json'
+                captions_filename = f"{self.vlm_name}_{self.frames_sampling_strategy}_window{self.window_span}s_fmin{self.vlm_caption_min_num_frames}_fmax{self.vlm_caption_max_num_frames}_toks{self.vlm_caption_max_new_tokens}_{self.vlm_key_caption_prompt}.json"
             else:
                 raise NotImplementedError
 
@@ -317,22 +321,24 @@ class FALCONEye(lmms):
                     captions_dict = json.load(f)
             else:
                 captions_dict = {"captions": {}, "num_inferences": 0, "total_time": 0}
-            
+
             return captions_dict
 
     def save_captions_func(self, filename, captions):
         captions_dir = os.path.join(self.captions_dir, filename)
 
         if self.frames_sampling_strategy == "ffmpeg_keyframes":
-            captions_filename = f'{self.vlm_name}_{self.frames_sampling_strategy}_thres{self.ffmpeg_scene_threshold}_maxseg{self.ffmpeg_max_segments}_minseg{self.ffmpeg_min_segments}_toks{self.vlm_caption_max_new_tokens}_{self.vlm_key_caption_prompt}.json'
+            captions_filename = (
+                f"{self.vlm_name}_{self.frames_sampling_strategy}_thres{self.ffmpeg_scene_threshold}_maxseg{self.ffmpeg_max_segments}_minseg{self.ffmpeg_min_segments}_toks{self.vlm_caption_max_new_tokens}_{self.vlm_key_caption_prompt}.json"
+            )
         elif self.frames_sampling_strategy == "uniform":
-            captions_filename = f'{self.vlm_name}_{self.frames_sampling_strategy}_window{self.window_span}s_fmin{self.vlm_caption_min_num_frames}_fmax{self.vlm_caption_max_num_frames}_toks{self.vlm_caption_max_new_tokens}_{self.vlm_key_caption_prompt}.json'
+            captions_filename = f"{self.vlm_name}_{self.frames_sampling_strategy}_window{self.window_span}s_fmin{self.vlm_caption_min_num_frames}_fmax{self.vlm_caption_max_num_frames}_toks{self.vlm_caption_max_new_tokens}_{self.vlm_key_caption_prompt}.json"
         else:
             raise NotImplementedError
         captions_filename = os.path.join(captions_dir, captions_filename)
         with open(captions_filename, "w") as f:
             json.dump(captions, f)
-        
+
         self.curr_captions_dict = captions
         self.curr_filename = filename
 
@@ -343,14 +349,14 @@ class FALCONEye(lmms):
         vqa_filename = self.vlm_name + str(question_id)
         if gpt_eval:
             vqa_filename = f"{vqa_filename}_gpteval"
-        vqa_filename = os.path.join(vqa_dir, vqa_filename+".json")
+        vqa_filename = os.path.join(vqa_dir, vqa_filename + ".json")
         if os.path.isfile(vqa_filename):
             with open(vqa_filename, "r") as f:
                 vqa_dict = json.load(f)
         else:
             vqa_dict = {}
         return vqa_dict
-    
+
     def numpy_converter(self, obj):
         if isinstance(obj, np.ndarray):
             return obj.tolist()  # Convert NumPy arrays to lists
@@ -365,13 +371,12 @@ class FALCONEye(lmms):
         vqa_filename = self.vlm_name + str(question_id)
         if gpt_eval:
             vqa_filename = f"{vqa_filename}_gpteval"
-        vqa_filename = os.path.join(vqa_dir, vqa_filename+".json")
+        vqa_filename = os.path.join(vqa_dir, vqa_filename + ".json")
 
         vqa_dict[key_sampling_frames_info] = output_dict
 
         with open(vqa_filename, "w") as f:
             json.dump(vqa_dict, f, default=self.numpy_converter)
-
 
     def load_image(self, image_path):
         frame_files = [os.path.join(image_path, f) for f in os.listdir(image_path) if os.path.isfile(os.path.join(image_path, f))]
@@ -449,7 +454,6 @@ class FALCONEye(lmms):
         image = Image.fromarray(frame)  # Convert NumPy array to PIL Image
         resized_image = image.resize(size, Image.BICUBIC)  # Resize to target size
         return np.array(resized_image)  # Convert back to NumPy array
-    
 
     def load_video(self, video_info, max_num_frames, window_time=None, num_tiles=None):
 
@@ -465,7 +469,7 @@ class FALCONEye(lmms):
             start_time, end_time = window_time[0], window_time[1]
             end_time = min(end_time, video_time)
             start_frame, end_frame = int(start_time * fps), int(end_time * fps)
-            total_window_frames = int((end_time - start_time) * fps) 
+            total_window_frames = int((end_time - start_time) * fps)
             num_frames = min(max_num_frames, total_window_frames)
             frame_indices = [int(total_window_frames / num_frames) * i + start_frame for i in range(num_frames)]
 
@@ -476,7 +480,6 @@ class FALCONEye(lmms):
             frames = frames.asnumpy()
         frame_timestamps = [frame_index / fps for frame_index in frame_indices]
         frame_timestamps = ",".join([f"{i:.2f}s" for i in frame_timestamps])
-
 
         if num_tiles is not None:
             # For each frame, split into tiles and include the resized original frame and tiles
@@ -514,7 +517,7 @@ class FALCONEye(lmms):
         frames_times = f"{num_frames} frames are uniformly sampled from the clip {window}. These frames are located at {frames_times}."
         time_instruction = f"The video lasts for {video_time:.2f} seconds. {frames_times} Please answer the following questions related to this video."
         return f"{time_instruction}\n{contexts}"
-    
+
     def get_video_info(self, video_file):
         from decord import VideoReader
 
@@ -543,7 +546,7 @@ class FALCONEye(lmms):
                 current_interval = None
 
         return cliptimeintervals
-    
+
     def extract_choices_from_question(self, question):
         choices = ["A", "B", "C", "D"]
         if "(E)" in question or "E." in question:
@@ -555,7 +558,7 @@ class FALCONEye(lmms):
         if "(H)" in question or "H." in question:
             choices.append("H")
         return choices
-        
+
     def get_confidence_from_outputs(self, question, outputs, choices_in_question=False):
         num_tokens = outputs["num_tokens"]
         tokens = outputs["tokens"]
@@ -570,13 +573,13 @@ class FALCONEye(lmms):
                 conf = options_token["top5_probs"][0]
         else:
             response_probs = [float(tok["top5_probs"][0]) for tok in tokens.values()]
-            conf = math.prod(response_probs) ** (1/len(response_probs))
-        
+            conf = math.prod(response_probs) ** (1 / len(response_probs))
+
         if isinstance(conf, np.ndarray):
             return round(conf.item(), 3)
         else:
             return round(conf, 3)
-    
+
     def get_numframes_and_numtiles_from_window(self, window_length, max_frames_num):
         if window_length >= 60:
             num_frames = max_frames_num
@@ -590,14 +593,14 @@ class FALCONEye(lmms):
         num_frames = max_frames_num
         num_tiles = None
         return num_frames, num_tiles
-    
+
     def get_numframes_from_window(self, window_length, max_frames_num, min_frames_num, max_fps, min_fps, mode):
         if mode == "captioning":
             if max_fps is not None and window_length * max_fps <= min_frames_num:
                 num_frames = int(window_length * max_fps)
             else:
-                num_frames = min(max_frames_num, max(min_frames_num, int(min_fps*window_length)))
-        
+                num_frames = min(max_frames_num, max(min_frames_num, int(min_fps * window_length)))
+
         elif mode == "vqa":
             fps_dif = max_fps - min_fps
             fps_33 = min_fps + fps_dif * 0.3333
@@ -615,7 +618,6 @@ class FALCONEye(lmms):
             num_frames = min(max_frames_num, max(round(window_length * new_fps), min_frames_num))
         return num_frames
 
-        
     def generate_final_answer_or_keep_exploring(self, video_info, question, responses, summary, conf_thres, gpt_eval=False):
         answer_format = {"final_answer": "xxx", "window_start_seconds": "xxx", "window_end_seconds": "xxx", "confidence": "xxx", "explanation": "xxx"}
         prompt = f"""
@@ -642,7 +644,7 @@ class FALCONEye(lmms):
             - The best response does **not** answer the question.
             - A better answer could be found by exploring more temporal windows.
             """
-        
+
         system_prompt = "You are a helpful assistant designed to output JSON."
         response = self.llm_reasoning.get_llm_response(system_prompt, prompt, video_info["filename"], json_format=True)
         print("Final response:", response)
@@ -665,7 +667,7 @@ class FALCONEye(lmms):
             response["response"] = None
             explanation = "The LLM did not return a valid response."
             return response, explanation
-        
+
     def generate_final_answer(self, video_info, question, responses, summary, conf_thres, gpt_eval=False):
         answer_format = {"final_answer": "xxx", "window_start_seconds": "xxx", "window_end_seconds": "xxx", "confidence": "xxx", "explanation": "xxx"}
         prompt = f"""
@@ -688,7 +690,7 @@ class FALCONEye(lmms):
 
             Return the final answer in JSON format: {answer_format}.  
             """
-        
+
         system_prompt = "You are a helpful assistant designed to output JSON."
         response = self.llm_reasoning.get_llm_response(system_prompt, prompt, video_info["filename"], json_format=True)
         try:
@@ -728,7 +730,7 @@ class FALCONEye(lmms):
             Return a list in JSON format: {answer_format}.  
             If no candidate window is close to answer the question, return an empty list.
         """
-        
+
         system_prompt = "You are a helpful assistant designed to output JSON."
         response = self.llm_reasoning.get_llm_response(system_prompt, prompt, video_info["filename"], json_format=True)
         window_candidates, window_explanations = [], []
@@ -738,7 +740,7 @@ class FALCONEye(lmms):
             elif type(response["response"]) is list and len(response["response"]) == 0:
                 print("No candidate windows to explore found.")
             else:
-                for clip, clip_info in response['response'].items():
+                for clip, clip_info in response["response"].items():
                     try:
                         if type(clip_info["start_s"]) is str:
                             window_s = float(clip_info["start_s"].replace("s", ""))
@@ -774,7 +776,7 @@ class FALCONEye(lmms):
         except Exception as e:
             print(f"Error parsing response: {response}\n{e}")
             print("No candidate windows to explore found.")
-        return window_candidates, window_explanations, response['tokens_usage']
+        return window_candidates, window_explanations, response["tokens_usage"]
 
     def generate_summary_from_captions(self, video_info, captions, gpt_eval=False):
         answer_format = {"summary": "xxx"}
@@ -785,12 +787,10 @@ class FALCONEye(lmms):
             ```
             Generate a short but detailed summary outlining the evolution of the main events. Return the summary in JSON format: {answer_format}.
             """
-        
+
         system_prompt = "You are a helpful assistant designed to output JSON."
         response = self.llm_reasoning.get_llm_response(system_prompt, prompt, video_info["filename"], json_format=True)
         return response
-
-
 
     def generate_candidate_windows_to_vqa(self, video_info, question, captions, summary, gpt_eval=False):
         answer_format = {
@@ -817,12 +817,12 @@ class FALCONEye(lmms):
             Consider temporal context from both the question and captions. 
             Return the result in JSON format: {answer_format}. Sort them by likelihood of containing the answer.
             """
-        
+
         system_prompt = "You are a helpful assistant designed to output JSON."
         response = self.llm_reasoning.get_llm_response(system_prompt, prompt, video_info["filename"], json_format=True)
         vqa_candidates, vqa_explanations = [], []
         try:
-            for clip, clip_info in response['response'].items():
+            for clip, clip_info in response["response"].items():
                 try:
                     if type(clip_info["start_s"]) is str:
                         window_s = float(clip_info["start_s"].replace("s", ""))
@@ -858,25 +858,23 @@ class FALCONEye(lmms):
         except Exception as e:
             print(f"Error parsing response: {response}\n{e}")
             print("Failed in video:", video_info["filename"])
-        return vqa_candidates, vqa_explanations, response['tokens_usage']
-
-
+        return vqa_candidates, vqa_explanations, response["tokens_usage"]
 
     def filter_timestamps_indices(self, timestamps, min_interval=5):
         """
         Removes timestamps that are closer than `min_interval` seconds to each other
         and returns the indices of the kept timestamps.
-        
+
         Args:
             timestamps (list): List of timestamps in seconds (floats or ints).
             min_interval (int): Minimum allowed interval between timestamps in seconds.
-        
+
         Returns:
             list: Indices of the filtered timestamps.
         """
         # Step 1: Sort timestamps and keep track of original indices
         indexed_timestamps = sorted(enumerate(timestamps), key=lambda x: x[1])
-        
+
         filtered_indices = []
         last_kept = None  # Keep track of the last added timestamp
 
@@ -888,16 +886,24 @@ class FALCONEye(lmms):
 
         return sorted(filtered_indices)  # Return indices in original order
 
-
-
     def extract_keyframes_ffmpeg(self, video_path, video_info, start_time, end_time, scene_threshold, skip_frames, width_res):
         scale_filter = f"scale={width_res}:-1"
         command = [
-                "ffmpeg", "-ss", f"{round(start_time, 2)}", "-to", f"{round(end_time,2)}", "-i", video_path,
-                "-vf", f"{scale_filter},select='not(mod(n,{skip_frames}))*gt(scene,{scene_threshold})',metadata=print",
-                "-vsync", "vfr",
-                "-f", "null", "-"
-            ]
+            "ffmpeg",
+            "-ss",
+            f"{round(start_time, 2)}",
+            "-to",
+            f"{round(end_time,2)}",
+            "-i",
+            video_path,
+            "-vf",
+            f"{scale_filter},select='not(mod(n,{skip_frames}))*gt(scene,{scene_threshold})',metadata=print",
+            "-vsync",
+            "vfr",
+            "-f",
+            "null",
+            "-",
+        ]
         try:
             process = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             stderr_output = process.stderr
@@ -924,27 +930,24 @@ class FALCONEye(lmms):
                 scene_score = round(float(line.split("score=")[1]), 3)
 
                 # Append parsed data
-                frames_info.append({
-                    "filtered_index": filtered_frame_index,  # Index in filtered sequence
-                    "global_index": global_frame_index,  # Global index in the video
-                    "timestamp": pts_time,  # Timestamp in video timeline
-                    "scene_score": scene_score
-                })
+                frames_info.append(
+                    {"filtered_index": filtered_frame_index, "global_index": global_frame_index, "timestamp": pts_time, "scene_score": scene_score}  # Index in filtered sequence  # Global index in the video  # Timestamp in video timeline
+                )
                 # print(line)
-        
+
         return frames_info
 
     def get_ffmpeg_scene_threshold(self, video_path):
-        # Hardcoded scene threshold for specific video categories such as egocentric videos 
+        # Hardcoded scene threshold for specific video categories such as egocentric videos
         if "Walking_Tours" in video_path:
             return 0.1
         else:
             return 0.3
-        
+
     def extract_windows_ffmpeg(self, video_path, video_info, start, end):
         frames_info = []
         # threshold = self.ffmpeg_scene_threshold
-        ffmpeg_max_segments = max(round(video_info['total_duration'] / 60), 5)
+        ffmpeg_max_segments = max(round(video_info["total_duration"] / 60), 5)
         if video_path != self.curr_video_path or self.all_key_timestamps is None:
             ffmpeg_scene_threshold = self.get_ffmpeg_scene_threshold(video_path)
             frames_info = self.extract_keyframes_ffmpeg(video_path, video_info, start, end, ffmpeg_scene_threshold, self.ffmpeg_skip_frames, self.ffmpeg_width_res)
@@ -952,14 +955,17 @@ class FALCONEye(lmms):
             start_frame = int(start * video_info["fps"])
             if len(frames_info) < self.ffmpeg_min_segments:
                 print(f"Video '{video_path}' has less than {self.ffmpeg_min_segments} keyframes ({len(frames_info)}) within temporal window {[start, end]}. Threshold is too low. We sample uniformly.")
-                frames_info = [{
+                frames_info = [
+                    {
                         "filtered_index": k,  # Index in filtered sequence
-                        "global_index": start_frame + int(window_duration*video_info["fps"]*k/self.ffmpeg_min_segments),  # Global index in the video
-                        "timestamp": start + (window_duration*k/self.ffmpeg_min_segments),
-                        "scene_score": 0.1
-                    } for k in range(1, self.ffmpeg_min_segments)]
+                        "global_index": start_frame + int(window_duration * video_info["fps"] * k / self.ffmpeg_min_segments),  # Global index in the video
+                        "timestamp": start + (window_duration * k / self.ffmpeg_min_segments),
+                        "scene_score": 0.1,
+                    }
+                    for k in range(1, self.ffmpeg_min_segments)
+                ]
             else:
-                print(f"Video '{video_path}' has {len(frames_info)} keyframes. Threshold is good.")   
+                print(f"Video '{video_path}' has {len(frames_info)} keyframes. Threshold is good.")
 
             # Extract timestamps and indices
             frame_indices = [frame["global_index"] for frame in frames_info]
@@ -979,7 +985,7 @@ class FALCONEye(lmms):
         key_timestamps.extend([start, end])
 
         key_timestamps = list(dict.fromkeys(sorted(key_timestamps)))
-        windows = [[key_timestamps[i], key_timestamps[i+1]] for i in range(len(key_timestamps) - 1)]
+        windows = [[key_timestamps[i], key_timestamps[i + 1]] for i in range(len(key_timestamps) - 1)]
         return windows
 
     def add_caption_to_outputs(self, video_info, outputs, window):
@@ -997,8 +1003,8 @@ class FALCONEye(lmms):
                 caption = all_captions_dict[f"[{window[0]}s-{window[1]}s]"]
             else:
                 print("No caption found for window: ", window, "in video: ", video_info["filename"], "We add the caption of the minute interval that it belongs to.")
-                start_w = int(window[0]//60)*60
-                minute_interval = [start_w, start_w+60]
+                start_w = int(window[0] // 60) * 60
+                minute_interval = [start_w, start_w + 60]
                 if f"[{minute_interval[0]}s-{minute_interval[1]}s]" in all_captions_dict:
                     caption = all_captions_dict[f"[{minute_interval[0]}s-{minute_interval[1]}s]"]
                 elif f"[{float(minute_interval[0])}s-{float(minute_interval[1])}s]" in all_captions_dict:
@@ -1010,12 +1016,12 @@ class FALCONEye(lmms):
         return outputs
 
     def compute_smallwindow_span2caption(self, window_duration):
-        if window_duration > 2*self.uniform_maxwindow2caption:
+        if window_duration > 2 * self.uniform_maxwindow2caption:
             smallwindow_span = self.uniform_maxwindow2caption
-        elif window_duration > self.uniform_maxwindow2caption//3:
-            smallwindow_span = 4*self.uniform_minwindow2caption
+        elif window_duration > self.uniform_maxwindow2caption // 3:
+            smallwindow_span = 4 * self.uniform_minwindow2caption
         else:
-            smallwindow_span = self.uniform_minwindow2caption 
+            smallwindow_span = self.uniform_minwindow2caption
         return smallwindow_span
 
     def generate_candidates4captioning(self, video_path, video_info, window_start, window_end, explored_windows, frames_sampling_strategy, times_and_inferences):
@@ -1037,18 +1043,19 @@ class FALCONEye(lmms):
             raise NotImplementedError
 
         else:
-            if window_end == video_info["total_duration"] and int(window_start) == 0: window_start = 0
+            if window_end == video_info["total_duration"] and int(window_start) == 0:
+                window_start = 0
             smallwindow_span = self.compute_smallwindow_span2caption(window_duration)
             num_smallwindows = int(window_duration / smallwindow_span)
-            smallwindows = [[window_start + k*smallwindow_span, window_start + (k+1)*smallwindow_span] for k in range(num_smallwindows)]
-        
+            smallwindows = [[window_start + k * smallwindow_span, window_start + (k + 1) * smallwindow_span] for k in range(num_smallwindows)]
+
         smallwindows = [w for w in smallwindows if w not in explored_windows]
         times_and_inferences["windows_candidates_generation_time"] += time.time() - t_generate_candidates
         return smallwindows
-    
+
     def generate_captions(self, video_path, video_info, window_start, window_end, smallwindows, times_and_inferences, gen_kwargs, return_dict=False):
         window_duration = window_end - window_start
-        if window_duration == video_info['total_duration']:
+        if window_duration == video_info["total_duration"]:
             generic_captions = True
         else:
             generic_captions = False
@@ -1057,7 +1064,6 @@ class FALCONEye(lmms):
         gen_kwargs["return_dict_in_generate"], gen_kwargs["output_scores"], gen_kwargs["output_logits"] = False, False, False
         gen_kwargs["max_new_tokens"] = self.vlm_caption_max_new_tokens
 
-        
         if self.load_captions:
             # all_captions_dict = self.captions[filename]["captions"]
             file_captions_dict = self.load_captions_func(filename)
@@ -1073,15 +1079,15 @@ class FALCONEye(lmms):
         for smallwindow in smallwindows2caption:
             print(f"Generating caption for window: {smallwindow} in video: {video_path}")
             smallwindow_s, smallwindow_e = smallwindow[0], smallwindow[1]
-            
+
             if "qwen2_5_vl" not in self.vlm_name:
                 sampling_frames_info = {"num_frames": self.vlm_caption_max_num_frames, "num_tiles": None, "window": smallwindow}
             else:
-                sampling_frames_info = {"window": smallwindow} 
+                sampling_frames_info = {"window": smallwindow}
                 if self.adjust_num_frames2window:
                     num_frames = self.get_numframes_from_window(smallwindow_e - smallwindow_s, self.vlm_caption_max_num_frames, self.vlm_caption_min_num_frames, self.vlm_fps, self.vlm_caption_fps, mode="captioning")
                     sampling_frames_info["num_frames"] = num_frames
-                    print(f"Sampling {num_frames} frames in window {smallwindow} for Captioning") 
+                    print(f"Sampling {num_frames} frames in window {smallwindow} for Captioning")
 
             if self.add_time_instruction:
                 caption_prompt = self.add_time_instruction_to_contexts(self.vlm_caption_prompt, video_info, sampling_frames_info)
@@ -1094,8 +1100,6 @@ class FALCONEye(lmms):
                 print("No caption generated for the window: ", smallwindow, "in the video: ", video_path, "of total duration: ", video_info["total_duration"])
                 continue
             all_captions_dict[f"[{smallwindow_s}s-{smallwindow_e}s]"] = caption
-
-
 
         caption_time = time.time() - t_caption_init
         file_captions_dict["captions"] = all_captions_dict
@@ -1111,7 +1115,7 @@ class FALCONEye(lmms):
             times_and_inferences["caption_video_time"] += caption_time
         else:
             times_and_inferences["num_caption_question_inferences"] += len(smallwindows)
-            times_and_inferences["caption_question_time"] += avg_caption_time * len(smallwindows) 
+            times_and_inferences["caption_question_time"] += avg_caption_time * len(smallwindows)
 
         captions_window = [f" [{w[0]}s-{w[1]}s]: [" + all_captions_dict[f"[{w[0]}s-{w[1]}s]"].replace("1.", "").replace("2.", "").replace("3.", "").replace("4.", "").replace("5.", "").replace("\n", "") + "] " for w in smallwindows]
         if return_dict:
@@ -1120,35 +1124,34 @@ class FALCONEye(lmms):
         else:
             return captions_window
 
-
     def generate_candidates_with_llm_reasoning(self, video_path, video_info, context, window_reason, explored_windows, times_and_inferences, gen_kwargs):
         window_start, window_end = window_reason[0], window_reason[1]
         print("Generating smallwindows for captioning...")
         window_duration = window_end - window_start
-        if window_duration == video_info['total_duration']:
+        if window_duration == video_info["total_duration"]:
             smallwindows = self.generate_candidates4captioning(video_path, video_info, window_start, window_end, explored_windows, self.frames_sampling_strategy, times_and_inferences)
             print("Generating captions for LLM Reasoning in the new smallwindows: ", smallwindows)
             captions_dict = self.generate_captions(video_path, video_info, window_start, window_end, smallwindows, times_and_inferences, gen_kwargs, return_dict=True)
             t_cand = time.time()
             if self.random_vqa_candidates:
                 vqa_candidates = random.sample(smallwindows, min(5, len(smallwindows)))
-                vqa_explanations = ["Randomly selected candidate."]*len(vqa_candidates)
+                vqa_explanations = ["Randomly selected candidate."] * len(vqa_candidates)
             else:
-                vqa_candidates, vqa_explanations, tokens_usage = self.generate_candidate_windows_to_vqa(video_info, context, captions_dict, video_info['summary'])
+                vqa_candidates, vqa_explanations, tokens_usage = self.generate_candidate_windows_to_vqa(video_info, context, captions_dict, video_info["summary"])
                 times_and_inferences["llm_tokens_usage"] += tokens_usage
                 times_and_inferences["num_llm_inferences"] += 1
                 times_and_inferences["llm_reasoning_time"] += time.time() - t_cand
             seen = set()
-            unique_new_candidates, unique_new_explanations  = [], []
+            unique_new_candidates, unique_new_explanations = [], []
             for idx, candidate in enumerate(vqa_candidates):
                 try:
                     good_candidate, candidate = self.check_candidate_window(candidate, video_info)
                 except Exception as e:
                     print(f"Error parsing scene: {candidate}. Skipping this candidate.")
                     print(e)
-                    continue # Convert to tuple for hashable type
+                    continue  # Convert to tuple for hashable type
                 if good_candidate:
-                    t = tuple(candidate) 
+                    t = tuple(candidate)
                     if t not in seen:
                         seen.add(t)  # Add the tuple to the seen set
                         unique_new_candidates.append(candidate)  # Append the original list version
@@ -1157,14 +1160,14 @@ class FALCONEye(lmms):
             if len(unique_new_candidates) == 0 and len(smallwindows) > 5:
                 print("No valid candidates found for VQA. Sampling random candidates.")
                 unique_new_candidates = random.sample(smallwindows, 3)
-                unique_new_explanations.extend(["Randomly selected candidates as no valid candidates were found."]*3)
+                unique_new_explanations.extend(["Randomly selected candidates as no valid candidates were found."] * 3)
             return unique_new_candidates, unique_new_explanations
         else:
             smallwindows = self.generate_candidates4captioning(video_path, video_info, window_start, window_end, explored_windows, "uniform", times_and_inferences)
             explanations = [f"The window {smallwindow} lies inside a potential segment {window_reason} to explore." for smallwindow in smallwindows]
             print("Candidates for VQA: ", smallwindows)
             return smallwindows, explanations
-        
+
     def check_candidate_window(self, window_candidate, video_info):
         window_candidate_duration = window_candidate[1] - window_candidate[0]
         if window_candidate_duration == video_info["total_duration"]:
@@ -1188,7 +1191,6 @@ class FALCONEye(lmms):
         else:
             return True, window_candidate
 
-    
     def generate_until(self, requests) -> List[str]:
         res = []
         pbar = tqdm(total=len(requests), disable=(self.rank != 0), desc="Model Responding")
@@ -1196,7 +1198,6 @@ class FALCONEye(lmms):
         num_vqa_frames_dict = {}
         num_vqa_inf = 0
         for contexts, gen_kwargs, doc_to_visual, doc_id, task, split in [reg.args for reg in requests]:
-            
 
             if "return_tempwindow" in gen_kwargs and gen_kwargs["return_tempwindow"]:
                 return_tempwindow = True
@@ -1210,7 +1211,6 @@ class FALCONEye(lmms):
                 choices_in_question = True
                 gpt_eval = False
                 self.conf_thres = self.conf_thres_w_options
-
 
             times_and_inferences = {
                 "caption_video_time": 0,
@@ -1245,7 +1245,6 @@ class FALCONEye(lmms):
 
             if self.load_vqa:
                 question_vqa_dict = self.load_vqa_func(video_name, q_id, "gpteval" in task)
-            
 
             if self.load_summary:
                 try:
@@ -1254,7 +1253,7 @@ class FALCONEye(lmms):
                     print(f"Error loading video summary: {e}")
                     video_summary_dict = None
             if video_summary_dict is None or not self.load_summary:
-                smallwindows2caption = self.generate_candidates4captioning(video_path, video_info,  0, video_info["total_duration"], [], self.frames_sampling_strategy, times_and_inferences)
+                smallwindows2caption = self.generate_candidates4captioning(video_path, video_info, 0, video_info["total_duration"], [], self.frames_sampling_strategy, times_and_inferences)
                 captions = self.generate_captions(video_path, video_info, 0, video_info["total_duration"], smallwindows2caption, times_and_inferences, gen_kwargs, return_dict=True)
                 t0 = time.time()
                 video_summary_dict = self.generate_summary_from_captions(video_info, captions, gpt_eval=choices_in_question)
@@ -1262,9 +1261,9 @@ class FALCONEye(lmms):
                 if self.save_summary:
                     self.save_summary_func(video_name, video_summary_dict)
                 times_and_inferences["num_llm_inferences"] += 1
-                times_and_inferences["llm_tokens_usage"] += video_summary_dict['tokens_usage']
+                times_and_inferences["llm_tokens_usage"] += video_summary_dict["tokens_usage"]
 
-            video_info["summary"] = video_summary_dict['response']['summary']
+            video_info["summary"] = video_summary_dict["response"]["summary"]
             vqa_gen_kwargs = copy.deepcopy(gen_kwargs)
             vqa_gen_kwargs["return_dict_in_generate"] = True
             vqa_gen_kwargs["output_scores"] = True
@@ -1276,9 +1275,7 @@ class FALCONEye(lmms):
             filteredcandidates2reason = []
 
             best_confidence = 0
-            best_outputs, best_window = {
-                "response": "None"
-            }, initial_window
+            best_outputs, best_window = {"response": "None"}, initial_window
 
             best_answer_checked = False
             explanation = None
@@ -1296,21 +1293,21 @@ class FALCONEye(lmms):
                 window_candidate = candidates.pop(0)
                 candidate_explanation = candidates_explanation.pop(0)
                 print(f"Exploring window {window_candidate} in the video with total duration {video_info['total_duration']} since: {candidate_explanation}")
-                
+
                 window_candidate_duration = window_candidate[1] - window_candidate[0]
                 t_vqa_init = time.time()
-               
+
                 if "qwen2_5_vl" not in self.vlm_name:
                     num_frames, num_tiles = self.get_numframes_and_numtiles_from_window(window_candidate_duration, self.vlm_vqa_max_num_frames)
                     sampling_frames_info = {"num_frames": num_frames, "num_tiles": num_tiles, "window": window_candidate}
                     num_vqa_inf += 1
-                    
+
                 else:
                     sampling_frames_info = {"window": window_candidate}
                     if self.adjust_num_frames2window:
                         num_frames = self.get_numframes_from_window(window_candidate_duration, self.vlm_vqa_max_num_frames, self.vlm_vqa_min_num_frames, self.vlm_fps, self.vlm_vqa_fps, mode="vqa")
                         sampling_frames_info["num_frames"] = num_frames
-                        print(f"Sampling {num_frames} frames in window {window_candidate} for VQA") 
+                        print(f"Sampling {num_frames} frames in window {window_candidate} for VQA")
                         if num_frames in num_vqa_frames_dict:
                             num_vqa_frames_dict[num_frames] += 1
                         else:
@@ -1318,7 +1315,7 @@ class FALCONEye(lmms):
 
                 if self.add_time_instruction:
                     contexts = self.add_time_instruction_to_contexts(contexts, video_info, sampling_frames_info)
-                
+
                 key_sampling_frames_info = "".join([f"{key}_{value}" for key, value in sampling_frames_info.items()])
                 if video_info["total_duration"] > 600 and window_candidate_duration == video_info["total_duration"]:
                     print("We do not try to find the answer in the whole video. Let us start with the exploration.")
@@ -1344,16 +1341,16 @@ class FALCONEye(lmms):
                 else:
                     times_and_inferences["num_vqa_inferences"] += 1
                     confidence = self.get_confidence_from_outputs(contexts, outputs, choices_in_question)
-                    
-                    response_dict = {"response": outputs['response'], "caption": outputs['caption'], "frames_res": outputs['frames_res'], "confidence": round(confidence, 3)}
+
+                    response_dict = {"response": outputs["response"], "caption": outputs["caption"], "frames_res": outputs["frames_res"], "confidence": round(confidence, 3)}
                     curr_responses_dict[str(window_candidate)] = response_dict
                     all_outputs[str([float(window_candidate[0]), float(window_candidate[1])])] = outputs
-                    print(f"[{times_and_inferences['num_vqa_inferences']}] VQA answer: ", outputs['response'], "with confidence: ", confidence)
+                    print(f"[{times_and_inferences['num_vqa_inferences']}] VQA answer: ", outputs["response"], "with confidence: ", confidence)
                     if confidence > curr_best_confidence:
                         curr_best_outputs = outputs
                         curr_best_confidence = confidence
                         curr_best_window_size = window_candidate[1] - window_candidate[0]
-                        
+
                     if confidence > best_confidence:
                         best_outputs = outputs
                         best_confidence = confidence
@@ -1361,16 +1358,16 @@ class FALCONEye(lmms):
                         best_window_size = best_window[1] - best_window[0]
                         best_answer_checked = False
                         best_answer_num_inferences = times_and_inferences["num_vqa_inferences"]
-                    
+
                     if not best_answer_checked and best_confidence > self.conf_thres and best_window_size <= self.max_returned_window_size:
                         print("******************** Confidence threshold surpassed. Possible BP *********************")
-        
+
                         if not self.trust_in_confidence_mode and gpt_eval:
                             print(f"Since there is an answer {best_outputs['response']} with confidence {best_confidence} surpassing the threshold {self.conf_thres}, we will check with lmm reasoning if it is our final answer.")
                             t_reason0 = time.time()
                             final_outputs, explanation = self.generate_final_answer_or_keep_exploring(video_info, contexts, curr_responses_dict, video_info["summary"], self.conf_thres, gpt_eval)
                             times_and_inferences["num_llm_inferences"] += 1
-                            times_and_inferences["llm_tokens_usage"] += final_outputs['tokens_usage']
+                            times_and_inferences["llm_tokens_usage"] += final_outputs["tokens_usage"]
                             times_and_inferences["llm_reasoning_time"] += time.time() - t_reason0
                         else:
                             print(f"Since there is an answer {best_outputs['response']} with confidence {best_confidence} surpassing the threshold {self.conf_thres} in Multiple-Choice question. We break it.")
@@ -1385,37 +1382,41 @@ class FALCONEye(lmms):
                             print("The answer was not good enough. We will continue exploring.")
                             print("**************************************************************************************")
                     elif window_candidate_duration > self.min_window_duration2reason:
-                        if not window_candidate_duration > 10: print("Window duration is quite small for splitting it: ", window_candidate)
+                        if not window_candidate_duration > 10:
+                            print("Window duration is quite small for splitting it: ", window_candidate)
                         candidates2reason_responses_dict[str(window_candidate)] = response_dict
                         candidates2reason.append(window_candidate)
-                
+
                 print("------------------")
                 explored_windows.append(window_candidate)
 
                 if len(candidates) == 0:
-                    conf_thres = self.conf_thres - 0.1 
+                    conf_thres = self.conf_thres - 0.1
                     if gpt_eval and not self.trust_in_confidence_mode and curr_best_confidence > conf_thres and curr_best_window_size <= self.max_returned_window_size:
                         print("******************** Confidence threshold is quite close. Possible BP *********************")
                         print(f"Since there is an answer {curr_best_outputs['response']} with confidence {curr_best_confidence} close to the threshold {self.conf_thres}, we will try to answer with lmm reasoning.")
                         t_reason0 = time.time()
                         final_outputs, explanation = self.generate_final_answer_or_keep_exploring(video_info, contexts, curr_responses_dict, video_info["summary"], self.conf_thres, gpt_eval)
                         times_and_inferences["num_llm_inferences"] += 1
-                        times_and_inferences["llm_tokens_usage"] += final_outputs['tokens_usage']
+                        times_and_inferences["llm_tokens_usage"] += final_outputs["tokens_usage"]
                         times_and_inferences["llm_reasoning_time"] += time.time() - t_reason0
                         if final_outputs["response"] is not None:
                             best_window = [float(final_outputs["response"]["window_start_seconds"]), float(final_outputs["response"]["window_end_seconds"])]
-                            if str(best_window) in all_outputs: best_outputs = all_outputs[str(best_window)]
-                            else: best_outputs["response"] = final_outputs["response"]["final_answer"]
+                            if str(best_window) in all_outputs:
+                                best_outputs = all_outputs[str(best_window)]
+                            else:
+                                best_outputs["response"] = final_outputs["response"]["final_answer"]
                             best_window = [float(final_outputs["response"]["window_start_seconds"]), float(final_outputs["response"]["window_end_seconds"])]
                             best_confidence = final_outputs["response"]["confidence"]
-                            print(f"Confidence threshold reached after {times_and_inferences['num_vqa_inferences']} inferences, breaking. VLM best answer: {best_outputs['response']} with confidence {best_confidence} /  LLM final answer: {final_outputs['response']['final_answer']} LLM explanation: {final_outputs['response']['explanation']}")
+                            print(
+                                f"Confidence threshold reached after {times_and_inferences['num_vqa_inferences']} inferences, breaking. VLM best answer: {best_outputs['response']} with confidence {best_confidence} /  LLM final answer: {final_outputs['response']['final_answer']} LLM explanation: {final_outputs['response']['explanation']}"
+                            )
                             print("**************************************************************************************")
                             break
 
                     all_responses_dict.update(curr_responses_dict)
                     curr_responses_dict = {}
                     curr_best_confidence, curr_best_window_size = 0, 0
-
 
                     # Generate new candidates for the next window from LLM reasoning
                     if times_and_inferences["num_vqa_inferences"] > self.max_num_vqa_inf:
@@ -1427,7 +1428,7 @@ class FALCONEye(lmms):
                             t_reason0 = time.time()
                             final_outputs = self.generate_final_answer(video_info, contexts, all_responses_dict, video_info["summary"], self.conf_thres, gpt_eval)
                             times_and_inferences["num_llm_inferences"] += 1
-                            times_and_inferences["llm_tokens_usage"] += final_outputs['tokens_usage']
+                            times_and_inferences["llm_tokens_usage"] += final_outputs["tokens_usage"]
                             times_and_inferences["llm_reasoning_time"] += time.time() - t_reason0
                             best_outputs["response"] = final_outputs["response"]["final_answer"]
                             try:
@@ -1446,7 +1447,8 @@ class FALCONEye(lmms):
                             filteredcandidates2reason = candidates2reason
                             filteredcandidates2reason_exp = ["Initial window. Just one candidate to continue with the exploration."]
                         else:
-                            if explanation is None: explanation = f"Not approaching the minimum confidence threshold of {self.conf_thres}."
+                            if explanation is None:
+                                explanation = f"Not approaching the minimum confidence threshold of {self.conf_thres}."
                             print("+++++++++++++++++++ Select the most promising windows to continue exploring +++++++++++++++++++++")
                             filteredcandidates2reason, filteredcandidates2reason_exp, tokens_usage = self.generate_candidate_windows_to_explore(video_info, contexts, candidates2reason_responses_dict, explanation)
                             times_and_inferences["num_llm_inferences"] += 1
@@ -1468,12 +1470,14 @@ class FALCONEye(lmms):
                         window_reason = [0, video_info["total_duration"]]
                     print(f"Generating VQA candidates in window {window_reason} since: {window_reason_exp}")
                     candidates, candidates_explanation = self.generate_candidates_with_llm_reasoning(video_path, video_info, contexts, window_reason, explored_windows, times_and_inferences, gen_kwargs)
-                    
+
                     if len(candidates) == 0:
                         print(f"NO CANDIDATES. FAIL? AFTER {times_and_inferences['num_vqa_inferences']} INFERENCES")
                         break
             print("------------------------------------------------------------------------------------------------------------------------------------------------------------------")
-            print(f"Response to question {contexts} after {times_and_inferences['num_vqa_inferences']} inferences with confidence {best_confidence} is: {best_outputs['response']}. Answer found in window {best_window} in the inference number {best_answer_num_inferences}")
+            print(
+                f"Response to question {contexts} after {times_and_inferences['num_vqa_inferences']} inferences with confidence {best_confidence} is: {best_outputs['response']}. Answer found in window {best_window} in the inference number {best_answer_num_inferences}"
+            )
             t_end = time.time()
             total_time = t_end - t_init
             times_and_inferences["total_time"] = total_time
@@ -1497,7 +1501,6 @@ class FALCONEye(lmms):
             else:
                 res.append(answer["response"])
 
-        
             del video_info, outputs, best_outputs
             torch.cuda.empty_cache()
             gc.collect()
@@ -1505,7 +1508,7 @@ class FALCONEye(lmms):
             print("------------------------------------------------------------------------------------------------------------------------------------------------------------------")
         print("The number of VQA inferences for each number of frames: ", num_vqa_frames_dict)
         print("The total number of VQA inferences: ", num_vqa_inf)
-        print("The number of inferences per question:", num_vqa_inf/len(res))
+        print("The number of inferences per question:", num_vqa_inf / len(res))
         return res
 
     def generate_until_multi_round(self, requests) -> List[str]:

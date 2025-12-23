@@ -26,11 +26,8 @@ from loguru import logger as eval_logger
 try:
     from ross.constants import DEFAULT_IMAGE_TOKEN, IMAGE_TOKEN_INDEX
     from ross.conversation import conv_templates
-    from ross.mm_utils import (
-        get_model_name_from_path,
-        process_images,
-        tokenizer_image_token,
-    )
+    from ross.mm_utils import (get_model_name_from_path, process_images,
+                               tokenizer_image_token)
     from ross.model.builder import load_pretrained_model
 except Exception as e:
     eval_logger.debug("Ross is not installed. Please install Ross to use this model.\nError: %s" % e)

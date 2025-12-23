@@ -6,9 +6,7 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 import torch
-from accelerate import (
-    Accelerator,
-)
+from accelerate import Accelerator
 from accelerate.utils import send_to_device
 from loguru import logger as eval_logger
 from PIL import Image
@@ -22,7 +20,8 @@ from lmms_eval.api.registry import register_model
 from lmms_eval.protocol import ChatMessages
 
 try:
-    from lmms_engine.datasets.processor import BagelDataProcessor, ProcessorConfig
+    from lmms_engine.datasets.processor import (BagelDataProcessor,
+                                                ProcessorConfig)
     from lmms_engine.models.bagel import Bagel
     from lmms_engine.models.bagel.inferencer import InterleaveInferencer
 except Exception as e:

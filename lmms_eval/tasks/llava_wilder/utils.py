@@ -8,7 +8,6 @@ from pathlib import Path
 
 import numpy as np
 import yaml
-
 # Set up a logger
 from loguru import logger as eval_logger
 

@@ -1,11 +1,8 @@
 import re
 from typing import Any, Dict, Optional, Tuple, Union
 
-from .prompt import (
-    BINARY_JUDGE_PROMPT,
-    COMPARATIVE_JUDGE_PROMPT,
-    CORRECTNESS_JUDGE_PROMPT,
-)
+from .prompt import (BINARY_JUDGE_PROMPT, COMPARATIVE_JUDGE_PROMPT,
+                     CORRECTNESS_JUDGE_PROMPT)
 
 
 class JudgePromptBuilder:

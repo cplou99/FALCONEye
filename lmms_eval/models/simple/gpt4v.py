@@ -1,18 +1,19 @@
 import base64
 import json
 import os
+import pickle
+import re
 import time
 from copy import deepcopy
 from io import BytesIO
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 
 import numpy as np
 import requests as url_requests
-import re
-import pickle
 from accelerate import Accelerator, DistributedType
-from tqdm import tqdm
 from openai import OpenAI
+from tqdm import tqdm
+
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
@@ -122,7 +123,7 @@ class GPT4V(lmms):
             pickle.dump(self.curr_llm_reasons, f)
             f.flush()  # Flush internal buffers
             os.fsync(f.fileno())  # Force writing to disk
-    
+
     def load_llm_reasons_func(self, filename, key):
         if filename != self.curr_llm_filename or self.curr_llm_reasons is None:
             cache_llm_file = os.path.join(self.llm_reasons_dir, f"{filename}.pkl")
@@ -137,7 +138,7 @@ class GPT4V(lmms):
             return self.curr_llm_reasons[key.encode()].decode()
         else:
             return None
-        
+
     # Function to encode the image
     def encode_image(self, image: Image):
         output_buffer = BytesIO()
@@ -236,24 +237,18 @@ class GPT4V(lmms):
                 else:  # If this was the last attempt, log and return empty string
                     eval_logger.error(f"All 5 attempts failed. Last error message: {str(e)}.\nResponse: {response.json()}")
                     response_text = ""
-        
-        response_dict = {"response": response_text,
-                         "tokens_usage": response_data["usage"]["prompt_tokens"]}
-        
+
+        response_dict = {"response": response_text, "tokens_usage": response_data["usage"]["prompt_tokens"]}
+
         return response_dict
 
     def inference_format(self, resp_format, messages, logprobs=False):
         from openai import OpenAI
+
         client = OpenAI()
-        completion = client.beta.chat.completions.parse(
-            model=self.model_version,
-            messages=messages,
-            response_format=resp_format,
-            logprobs=logprobs
-        )
+        completion = client.beta.chat.completions.parse(model=self.model_version, messages=messages, response_format=resp_format, logprobs=logprobs)
 
         return completion
-
 
     def parse_json(self, text):
         try:
@@ -275,8 +270,6 @@ class GPT4V(lmms):
             print("No valid JSON found in the text.")
             return None
 
-        
-
     def get_llm_response(self, system_prompt, prompt, filename, json_format=True):
         messages = [
             {
@@ -293,7 +286,7 @@ class GPT4V(lmms):
                 cached_value = self.parse_json(cached_value)
                 print("Get LLM reasoning from cache")
                 return cached_value
-        
+
         for _ in range(3):
             try:
                 print("GPT4V: Sending request to OpenAI")
@@ -305,9 +298,7 @@ class GPT4V(lmms):
                         messages=messages,
                     )
                 else:
-                    completion = client.chat.completions.create(
-                        model=self.model_version, messages=messages
-                    )
+                    completion = client.chat.completions.create(model=self.model_version, messages=messages)
                 response_text = completion.choices[0].message.content
                 if json_format:
                     response = self.parse_json(response_text)
@@ -321,7 +312,7 @@ class GPT4V(lmms):
                 print(f"GPT Error: {e}")
                 continue
         return "GPT Error"
-    
+
     def generate_until(self, requests) -> List[str]:
         res = []
         pbar = tqdm(total=len(requests), disable=(self.rank != 0), desc="Model Responding")

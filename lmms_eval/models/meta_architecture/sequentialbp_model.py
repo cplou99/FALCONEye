@@ -1,33 +1,25 @@
+import copy
+import json
 import math
 import os
+import time
 from datetime import timedelta
 from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import torch
-import copy
-import time
-import json
 from accelerate import Accelerator, DistributedType, InitProcessGroupKwargs
 from accelerate.state import AcceleratorState
 from decord import VideoReader, cpu
-from llava.constants import (
-    DEFAULT_IM_END_TOKEN,
-    DEFAULT_IM_START_TOKEN,
-    DEFAULT_IMAGE_TOKEN,
-    IGNORE_INDEX,
-    IMAGE_TOKEN_INDEX,
-)
+from llava.constants import (DEFAULT_IM_END_TOKEN, DEFAULT_IM_START_TOKEN,
+                             DEFAULT_IMAGE_TOKEN, IGNORE_INDEX,
+                             IMAGE_TOKEN_INDEX)
 from llava.conversation import SeparatorStyle, conv_templates
-from llava.mm_utils import (
-    KeywordsStoppingCriteria,
-    get_model_name_from_path,
-    tokenizer_image_token,
-)
+from llava.mm_utils import (KeywordsStoppingCriteria, get_model_name_from_path,
+                            tokenizer_image_token)
 from llava.model.builder import load_pretrained_model
 from llava.model.language_model.llava_llama import LlavaConfig
 from llava.model.language_model.llava_qwen import LlavaQwenConfig
-
 # eval_logger = logging.getLogger("lmms-eval")
 # import sys;sys.path.append("llava-video")
 from loguru import logger as eval_logger
@@ -38,9 +30,9 @@ from transformers import AutoConfig, AutoModelForCausalLM
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
+from lmms_eval.models import get_model
 from lmms_eval.models.model_utils.load_video import read_video_pyav
 from lmms_eval.utils import handle_arg_string
-from lmms_eval.models import get_model
 
 AutoConfig.register("llava_llama", LlavaConfig)
 AutoConfig.register("llava_qwen", LlavaQwenConfig)
@@ -56,9 +48,9 @@ class SequentialBP(lmms):
         self,
         vlm_pred_name: str,
         vlm_pred_config: str,
-        frames_sampling_strategy: Optional[str] = "uniform", # ffmpeg_keyframes, resnet_keyframes
+        frames_sampling_strategy: Optional[str] = "uniform",  # ffmpeg_keyframes, resnet_keyframes
         num_frames_sampled: Optional[int] = 32,
-        batch_size: Optional[int] = 1, 
+        batch_size: Optional[int] = 1,
         vlm_pred_device: Optional[str] = "cuda",
         device: Optional[str] = "cuda",
         video_decode_backend: Optional[str] = "decord",
@@ -76,7 +68,7 @@ class SequentialBP(lmms):
 
         self.vlm_pred_name = vlm_pred_name
         self.vlm_pred_config = vlm_pred_config
-        self.frames_sampling_strategy = frames_sampling_strategy   
+        self.frames_sampling_strategy = frames_sampling_strategy
         self.num_frames_sampled = num_frames_sampled
         self.vlm_pred_device = vlm_pred_device
         self.video_decode_backend = video_decode_backend
@@ -89,7 +81,7 @@ class SequentialBP(lmms):
 
         self.vlm_pred_config = self.vlm_pred_config[1:-1].replace(";", ",").replace("#", "=")
         self.vlm_pred = vlm_pred_ModelClass.create_from_arg_string(
-           self.vlm_pred_config,
+            self.vlm_pred_config,
             {
                 "batch_size": batch_size,
                 "device": self.vlm_pred_device,
@@ -110,14 +102,14 @@ class SequentialBP(lmms):
         vqa_filename = self.vlm_pred_name + question_id
         if gpt_eval:
             vqa_filename = f"{vqa_filename}_gpteval"
-        vqa_filename = os.path.join(vqa_dir, vqa_filename+".json")
+        vqa_filename = os.path.join(vqa_dir, vqa_filename + ".json")
         if os.path.isfile(vqa_filename):
             with open(vqa_filename, "r") as f:
                 vqa_dict = json.load(f)
         else:
             vqa_dict = {}
         return vqa_dict
-    
+
     def numpy_converter(self, obj):
         if isinstance(obj, np.ndarray):
             return obj.tolist()  # Convert NumPy arrays to lists
@@ -132,7 +124,7 @@ class SequentialBP(lmms):
         vqa_filename = self.vlm_pred_name + question_id
         if gpt_eval:
             vqa_filename = f"{vqa_filename}_gpteval"
-        vqa_filename = os.path.join(vqa_dir, vqa_filename+".json")
+        vqa_filename = os.path.join(vqa_dir, vqa_filename + ".json")
 
         vqa_dict[key_sampling_frames_info] = output_dict
 
@@ -146,7 +138,7 @@ class SequentialBP(lmms):
         frames_times = f"{num_frames} frames are uniformly sampled from the clip {window}. These frames are located at {frames_times}."
         time_instruction = f"The video lasts for {video_time:.2f} seconds. {frames_times} Please answer the following questions related to this video."
         return f"{time_instruction}\n{contexts}"
-    
+
     def get_video_info(self, video_file):
         from decord import VideoReader
 
@@ -157,7 +149,7 @@ class SequentialBP(lmms):
         video_time = total_frames / fps
         video_info = {"vr": vr, "fps": fps, "total_frames": total_frames, "total_duration": video_time, "path": video_file}
         return video_info
-    
+
     def load_video(self, video_info, max_num_frames, window_time=None):
         from decord import VideoReader
 
@@ -173,7 +165,7 @@ class SequentialBP(lmms):
             start_time, end_time = window_time[0], window_time[1]
             end_time = min(end_time, video_time)
             start_frame, end_frame = int(start_time * fps), int(end_time * fps)
-            total_window_frames = int((end_time - start_time) * fps) 
+            total_window_frames = int((end_time - start_time) * fps)
             num_frames = min(max_num_frames, total_window_frames)
             frame_indices = [int(total_window_frames / num_frames) * i + start_frame for i in range(num_frames)]
 
@@ -205,16 +197,15 @@ class SequentialBP(lmms):
             options_token = [tok for tok in tokens.values() if tok["token"] in ["A", "B", "C", "D"]]
             if len(options_token) == 0:
                 response_probs = [float(tok["top5_probs"][0]) for tok in tokens.values()]
-                conf = math.prod(response_probs) ** (1/len(response_probs))
+                conf = math.prod(response_probs) ** (1 / len(response_probs))
             else:
                 options_token = options_token[0]
                 conf = options_token["top5_probs"][0]
         else:
             response_probs = [float(tok["top5_probs"][0]) for tok in tokens.values()]
-            conf = math.prod(response_probs) ** (1/len(response_probs))
-        
-        return conf
+            conf = math.prod(response_probs) ** (1 / len(response_probs))
 
+        return conf
 
     def generate_until(self, requests) -> List[str]:
         res = []
@@ -222,7 +213,7 @@ class SequentialBP(lmms):
 
         for contexts, gen_kwargs, doc_to_visual, doc_id, task, split in [reg.args for reg in requests]:
             visuals = doc_to_visual(self.task_dict[task][split][doc_id])
-            
+
             if "return_tempwindow" in gen_kwargs and gen_kwargs["return_tempwindow"]:
                 return_tempwindow = True
             else:
@@ -237,7 +228,7 @@ class SequentialBP(lmms):
             video_path = visuals[0]
             video_name = video_path.split("/")[-1].split(".")[0]  # Extract video name
             if self.load_vqa:
-                question_vqa_dict = self.load_vqa_func(video_name, str(self.task_dict[task][split][doc_id]['id']), "gpteval" in task)
+                question_vqa_dict = self.load_vqa_func(video_name, str(self.task_dict[task][split][doc_id]["id"]), "gpteval" in task)
 
             times_and_inferences = {}
             video_info = self.get_video_info(visuals[0])
@@ -254,7 +245,7 @@ class SequentialBP(lmms):
                 if self.vlm_pred_name != "qwen2_5_vl":
                     sampling_frames_info = {"num_frames": self.vlm_pred_max_frames_num, "num_tiles": None, "window": window_time}
                 else:
-                    sampling_frames_info = {"window": window_time} 
+                    sampling_frames_info = {"window": window_time}
 
                 if self.add_time_instruction:
                     contexts = self.add_time_instruction_to_contexts(contexts, video_info, sampling_frames_info)
@@ -273,12 +264,12 @@ class SequentialBP(lmms):
                     print(f"Time taken for VLM inference: {time.time() - t_init}")
                     if self.save_vqa:
                         outputs["vqa_time"] = time.time() - t_init
-                        self.save_vqa_func(video_name, self.task_dict[task][split][doc_id]['id'], "gpteval" in task, key_sampling_frames_info, question_vqa_dict, outputs)
+                        self.save_vqa_func(video_name, self.task_dict[task][split][doc_id]["id"], "gpteval" in task, key_sampling_frames_info, question_vqa_dict, outputs)
 
                 if outputs is None:
                     print(f"The VLM model returned None for the outputs. Skipping this window: {window_time}.")
                     continue
-                
+
                 confidence = self.get_confidence_from_outputs(outputs, choices_in_question)
                 num_inferences += 1
                 print("Response: ", outputs["response"], "with confidence: ", confidence)
@@ -288,7 +279,7 @@ class SequentialBP(lmms):
                     best_confidence = confidence
                     best_window = [window_start, window_end]
 
-                if window_end+spf >= video_info["total_duration"]:
+                if window_end + spf >= video_info["total_duration"]:
                     break
                 else:
                     window_start = window_end

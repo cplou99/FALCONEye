@@ -3,13 +3,8 @@ from typing import Optional
 
 from .base import ServerInterface
 from .protocol import ServerConfig
-from .providers import (
-    AsyncAzureOpenAIProvider,
-    AsyncOpenAIProvider,
-    AzureOpenAIProvider,
-    DummyProvider,
-    OpenAIProvider,
-)
+from .providers import (AsyncAzureOpenAIProvider, AsyncOpenAIProvider,
+                        AzureOpenAIProvider, DummyProvider, OpenAIProvider)
 
 
 class ProviderFactory:

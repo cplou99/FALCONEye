@@ -1,7 +1,8 @@
 from datasets import Dataset
 
 from lmms_eval.tasks._task_utils.reasoning_utils import compute_score
-from lmms_eval.tasks.charxiv.constant import DESCRIPTIVE_RESP_INST, REASONING_RESP_INST
+from lmms_eval.tasks.charxiv.constant import (DESCRIPTIVE_RESP_INST,
+                                              REASONING_RESP_INST)
 
 SYSTEM_PROMPT = (
     "You are a helpful assistant. When the user asks a question, your response must include two parts: "

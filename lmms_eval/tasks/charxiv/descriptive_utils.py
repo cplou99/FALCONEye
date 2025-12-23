@@ -1,12 +1,10 @@
 import json
 import os
 
-from lmms_eval.tasks.charxiv.constant import (
-    DESCRIPTIVE_GRADING_ICL,
-    DESCRIPTIVE_GRADING_PREFIX,
-    DESCRIPTIVE_GRADING_QMAP,
-    DESCRIPTIVE_RESP_INST,
-)
+from lmms_eval.tasks.charxiv.constant import (DESCRIPTIVE_GRADING_ICL,
+                                              DESCRIPTIVE_GRADING_PREFIX,
+                                              DESCRIPTIVE_GRADING_QMAP,
+                                              DESCRIPTIVE_RESP_INST)
 
 
 def get_rubric(qid):

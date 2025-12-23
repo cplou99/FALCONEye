@@ -1464,9 +1464,8 @@ def voicebench_process_results_ifeval(doc, results):
         from .instruction_following_eval import instructions_registry
     except Exception:
         try:
-            from lmms_eval.tasks.voicebench.instruction_following_eval import (
-                instructions_registry,
-            )
+            from lmms_eval.tasks.voicebench.instruction_following_eval import \
+                instructions_registry
         except Exception as e:
             eval_logger.error(f"Instruction following registry import failed: {e}")
             return {"accuracy": 0.0}

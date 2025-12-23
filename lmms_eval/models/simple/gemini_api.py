@@ -1,9 +1,10 @@
 import io
 import json
 import os
+import pickle
 import time
 from typing import List, Tuple
-import pickle
+
 import datasets
 from accelerate import Accelerator, DistributedType
 from loguru import logger as eval_logger
@@ -23,6 +24,7 @@ try:
 except Exception as e:
     eval_logger.error(f"Error importing generativeai: {str(e)}")
     genai = None
+
 
 @register_model("gemini_api")
 class GeminiAPI(lmms):
@@ -134,7 +136,7 @@ class GeminiAPI(lmms):
 
     def save_llm_reasons_func(self, filename, key, value):
         cache_llm_file = os.path.join(self.response_persistent_folder, f"{filename}.pkl")
-        if not hasattr(self, 'curr_llm_reasons') or self.curr_llm_reasons is None:
+        if not hasattr(self, "curr_llm_reasons") or self.curr_llm_reasons is None:
             self.curr_llm_reasons = {}
         self.add_llm_reason_to_curr_dict(key, value)
         with open(cache_llm_file, "wb") as f:
@@ -144,7 +146,7 @@ class GeminiAPI(lmms):
 
     def load_llm_reasons_func(self, filename, key):
         cache_llm_file = os.path.join(self.response_persistent_folder, f"{filename}.pkl")
-        if not hasattr(self, 'curr_llm_filename') or filename != self.curr_llm_filename or not hasattr(self, 'curr_llm_reasons') or self.curr_llm_reasons is None:
+        if not hasattr(self, "curr_llm_filename") or filename != self.curr_llm_filename or not hasattr(self, "curr_llm_reasons") or self.curr_llm_reasons is None:
             if os.path.isfile(cache_llm_file):
                 with open(cache_llm_file, "rb") as f:
                     self.curr_llm_reasons = pickle.load(f)
@@ -158,6 +160,7 @@ class GeminiAPI(lmms):
 
     def parse_json(self, text):
         import re
+
         # Remove leading/trailing whitespace and unescape newlines
         text = text.strip()
         # Remove triple backticks and possible "json" markers
@@ -188,7 +191,7 @@ class GeminiAPI(lmms):
             {"role": "user", "content": prompt},
         ]
         key = json.dumps([self.model_version, messages])
-        if self.continual_mode and hasattr(self, 'load_llm_reasons_func') and self.load_llm_reasons_func(filename, key) is not None:
+        if self.continual_mode and hasattr(self, "load_llm_reasons_func") and self.load_llm_reasons_func(filename, key) is not None:
             cached_value = self.load_llm_reasons_func(filename, key)
             if cached_value is not None:
                 cached_value = self.parse_json(cached_value)
@@ -200,27 +203,21 @@ class GeminiAPI(lmms):
                 t_llm_init = time.time()
                 # Gemini API expects a single string prompt, so we concatenate
                 full_prompt = f"{system_prompt}\n{prompt}"
-                response = self.client.models.generate_content(
-                    model=self.model_version,
-                    contents=full_prompt)
+                response = self.client.models.generate_content(model=self.model_version, contents=full_prompt)
                 response_text = response.text
                 if json_format:
                     response_parsed = self.parse_json(response_text)
                 else:
                     response_parsed = response_text
-                response_dict = {
-                    "response": response_parsed,
-                    "tokens_usage": response.usage_metadata.total_token_count,  # Gemini API may not provide token usage
-                    "time": time.time() - t_llm_init
-                }
-                if hasattr(self, 'save_llm_reasons_func'):
+                response_dict = {"response": response_parsed, "tokens_usage": response.usage_metadata.total_token_count, "time": time.time() - t_llm_init}  # Gemini API may not provide token usage
+                if hasattr(self, "save_llm_reasons_func"):
                     self.save_llm_reasons_func(filename, key, response_dict)
                 return response_dict
             except Exception as e:
                 print(f"Gemini Error: {e}")
                 continue
         return "Gemini Error"
-    
+
     def generate_until(self, requests) -> List[str]:
         res = []
         pbar = tqdm(total=len(requests), disable=(self.rank != 0), desc="Model Responding")

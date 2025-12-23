@@ -13,7 +13,8 @@ from lmms_eval import utils
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
-from lmms_eval.models.model_utils.audio_processing import downsample_audio, split_audio
+from lmms_eval.models.model_utils.audio_processing import (downsample_audio,
+                                                           split_audio)
 
 
 @register_model("qwen2_audio")

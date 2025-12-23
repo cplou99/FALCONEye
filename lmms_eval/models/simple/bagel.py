@@ -6,12 +6,8 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 import torch
-from accelerate import (
-    Accelerator,
-    infer_auto_device_map,
-    init_empty_weights,
-    load_checkpoint_and_dispatch,
-)
+from accelerate import (Accelerator, infer_auto_device_map, init_empty_weights,
+                        load_checkpoint_and_dispatch)
 from loguru import logger as eval_logger
 from tqdm import tqdm
 
@@ -76,13 +72,9 @@ class Bagel(lmms):
             from inferencer import InterleaveInferencer
             from modeling.autoencoder import load_ae
             from modeling.bagel import Bagel as BagelModel
-            from modeling.bagel import (
-                BagelConfig,
-                Qwen2Config,
-                Qwen2ForCausalLM,
-                SiglipVisionConfig,
-                SiglipVisionModel,
-            )
+            from modeling.bagel import (BagelConfig, Qwen2Config,
+                                        Qwen2ForCausalLM, SiglipVisionConfig,
+                                        SiglipVisionModel)
             from modeling.qwen2 import Qwen2Tokenizer
 
             self.add_special_tokens = add_special_tokens
@@ -286,10 +278,8 @@ class Bagel(lmms):
         elif self.precision_mode == "4bit":
             # NF4: 4-bit quantization
             try:
-                from accelerate.utils import (
-                    BnbQuantizationConfig,
-                    load_and_quantize_model,
-                )
+                from accelerate.utils import (BnbQuantizationConfig,
+                                              load_and_quantize_model)
 
                 bnb_quantization_config = BnbQuantizationConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.bfloat16, bnb_4bit_use_double_quant=False, bnb_4bit_quant_type="nf4")
                 model = load_and_quantize_model(
@@ -306,10 +296,8 @@ class Bagel(lmms):
         elif self.precision_mode == "8bit":
             # INT8: 8-bit quantization
             try:
-                from accelerate.utils import (
-                    BnbQuantizationConfig,
-                    load_and_quantize_model,
-                )
+                from accelerate.utils import (BnbQuantizationConfig,
+                                              load_and_quantize_model)
 
                 bnb_quantization_config = BnbQuantizationConfig(load_in_8bit=True, torch_dtype=torch.float32)
                 model = load_and_quantize_model(

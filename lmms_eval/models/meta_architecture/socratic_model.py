@@ -1,39 +1,41 @@
+import copy
+import json
 import math
 import os
+import time
 from datetime import timedelta
 from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import torch
-import copy
-import json
-import time
 from accelerate import Accelerator, DistributedType, InitProcessGroupKwargs
 from accelerate.state import AcceleratorState
 from decord import VideoReader, cpu
-
 # eval_logger = logging.getLogger("lmms-eval")
 # import sys;sys.path.append("llava-video")
 from loguru import logger as eval_logger
 from PIL import Image
+from pydantic import BaseModel
 from tqdm import tqdm
 from transformers import AutoConfig, AutoModelForCausalLM
 
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
+from lmms_eval.models import get_model
 from lmms_eval.models.model_utils.load_video import read_video_pyav
 from lmms_eval.utils import handle_arg_string
-from lmms_eval.models import get_model
 
-from pydantic import BaseModel
+
 class TimeWindow(BaseModel):
     start: float
     end: float
 
+
 class AnswerVQA(BaseModel):
     answer: str
     window: TimeWindow
+
 
 @register_model("socratic_model")
 class Socratic(lmms):
@@ -47,16 +49,16 @@ class Socratic(lmms):
         vlm_caption_config: str,
         llm_vqa_name: str,
         llm_vqa_config: str,
-        frames_sampling_strategy: Optional[str] = "uniform", # ffmpeg_keyframes, resnet_keyframes
+        frames_sampling_strategy: Optional[str] = "uniform",  # ffmpeg_keyframes, resnet_keyframes
         frame_rate: Optional[int] = 0.5,
-        batch_size: Optional[int] = 1, 
+        batch_size: Optional[int] = 1,
         vlm_caption_device: Optional[str] = "cuda",
         llm_vqa_device: Optional[str] = "cuda",
         device: Optional[str] = "cuda",
         video_decode_backend: Optional[str] = "decord",
         add_time_instruction: Optional[bool] = False,
         window_span: Optional[float] = 60,
-        vlm_caption_max_new_tokens: Optional[int] = 64, #Socratic original: 768
+        vlm_caption_max_new_tokens: Optional[int] = 64,  # Socratic original: 768
         save_captions: Optional[bool] = True,
         load_captions: Optional[bool] = True,
         captions_dir: Optional[str] = f"{os.path.dirname(os.getcwd())}/features/captions",
@@ -69,7 +71,7 @@ class Socratic(lmms):
         self.vlm_caption_config = vlm_caption_config
         self.llm_vqa_name = llm_vqa_name
         self.llm_vqa_config = llm_vqa_config
-        self.frames_sampling_strategy = frames_sampling_strategy   
+        self.frames_sampling_strategy = frames_sampling_strategy
         self.frame_rate = frame_rate
         self.vlm_caption_device = vlm_caption_device
         self.llm_vqa_device = llm_vqa_device
@@ -86,7 +88,7 @@ class Socratic(lmms):
 
         self.vlm_caption_config = self.vlm_caption_config[1:-1].replace(";", ",").replace("#", "=")
         self.vlm_caption = vlm_caption_ModelClass.create_from_arg_string(
-           self.vlm_caption_config,
+            self.vlm_caption_config,
             {
                 "batch_size": batch_size,
                 "device": self.vlm_caption_device,
@@ -99,7 +101,7 @@ class Socratic(lmms):
         llm_vqa_ModelClass = get_model(self.llm_vqa_name)
         self.llm_vqa_config = self.llm_vqa_config[1:-1].replace(";", ",").replace("#", "=")
         self.llm_vqa = llm_vqa_ModelClass.create_from_arg_string(
-           self.llm_vqa_config,
+            self.llm_vqa_config,
             {
                 "batch_size": batch_size,
                 "device": self.llm_vqa_device,
@@ -110,37 +112,35 @@ class Socratic(lmms):
         if self.save_captions or self.load_captions:
             os.makedirs(self.captions_dir, exist_ok=True)
             self.vlm_key_caption_prompt = "".join([w[0] for w in self.vlm_caption_prompt.split(" ")])
-            
 
         if not hasattr(self.vlm_caption, "inference"):
             raise AttributeError(f"Class '{self.vlm_caption.__name__}' does not have a function 'inference'. This function should act as generate_until but for a unique question and a video. Refer to qwen-2_5_vl.py as example.")
         if not hasattr(self.llm_vqa, "inference_format"):
             raise AttributeError(f"Class '{self.llm_vqa.__name__}' does not have a function 'inference_format'. This function should act as generate_until but for a unique question and a video. Refer to qwen-2_5_vl.py as example.")
-    
-   
+
     def load_captions_func(self, filename):
         if filename == self.curr_filename and self.curr_captions_dict is not None:
             return self.curr_captions_dict
         else:
             captions_dir = os.path.join(self.captions_dir, filename)
             os.makedirs(captions_dir, exist_ok=True)
-            captions_filename = f'{self.vlm_caption_name}_uniform_window{self.window_span}s_fmin4_fmax32_toks{self.vlm_caption_max_new_tokens}_{self.vlm_key_caption_prompt}.json'
+            captions_filename = f"{self.vlm_caption_name}_uniform_window{self.window_span}s_fmin4_fmax32_toks{self.vlm_caption_max_new_tokens}_{self.vlm_key_caption_prompt}.json"
             captions_filename = os.path.join(captions_dir, captions_filename)
             if os.path.isfile(captions_filename):
                 with open(captions_filename, "r") as f:
                     captions_dict = json.load(f)
             else:
                 captions_dict = {"captions": {}, "num_inferences": 0, "total_time": 0}
-            
+
             return captions_dict
 
     def save_captions_func(self, filename, captions):
         captions_dir = os.path.join(self.captions_dir, filename)
-        captions_filename = f'{self.vlm_caption_name}__uniform_window{self.window_span}s_fmin4_fmax32_toks{self.vlm_caption_max_new_tokens}_{self.vlm_key_caption_prompt}.json'
+        captions_filename = f"{self.vlm_caption_name}__uniform_window{self.window_span}s_fmin4_fmax32_toks{self.vlm_caption_max_new_tokens}_{self.vlm_key_caption_prompt}.json"
         captions_filename = os.path.join(captions_dir, captions_filename)
         with open(captions_filename, "w") as f:
             json.dump(captions, f)
-        
+
         self.curr_captions_dict = captions
         self.curr_filename = filename
 
@@ -154,7 +154,7 @@ class Socratic(lmms):
         video_time = total_frames / fps
         video_info = {"vr": vr, "fps": fps, "total_frames": total_frames, "total_duration": video_time, "path": video_file}
         return video_info
-    
+
     def add_time_instruction_to_contexts(self, contexts, video_info, sampling_frames_info):
         num_frames = sampling_frames_info["num_frames"]
         window = sampling_frames_info["window"]
@@ -176,7 +176,7 @@ class Socratic(lmms):
             start_time, end_time = window_time[0], window_time[1]
             end_time = min(end_time, video_time)
             start_frame, end_frame = int(start_time * fps), int(end_time * fps)
-            total_window_frames = int((end_time - start_time) * fps) 
+            total_window_frames = int((end_time - start_time) * fps)
             num_frames = min(max_num_frames, total_window_frames)
             frame_indices = [int(total_window_frames / num_frames) * i + start_frame for i in range(num_frames)]
 
@@ -199,7 +199,6 @@ class Socratic(lmms):
             for j in i:
                 new_list.append(j)
         return new_list
-
 
     def generate_until(self, requests) -> List[str]:
         res = []
@@ -256,7 +255,7 @@ class Socratic(lmms):
                     if self.vlm_caption_name != "qwen2_5_vl":
                         sampling_frames_info = {"num_frames": num_frames, "num_tiles": None, "window": window_time}
                     else:
-                        sampling_frames_info = {"num_frames": num_frames, "window": window_time} 
+                        sampling_frames_info = {"num_frames": num_frames, "window": window_time}
 
                     if self.add_time_instruction:
                         caption_prompt = self.add_time_instruction_to_contexts(self.vlm_caption_prompt, video_info, sampling_frames_info)
@@ -265,7 +264,7 @@ class Socratic(lmms):
                     t_inf_s = time.time()
                     caption = self.vlm_caption.inference(video_info, sampling_frames_info, caption_prompt, gen_kwargs)
                     t_inf = time.time() - t_inf_s
-                    print("Time spent at vlm inference: ",  t_inf)
+                    print("Time spent at vlm inference: ", t_inf)
                     t_infs.append(t_inf)
                     print("Caption: ", caption)
                     if caption is None:
@@ -274,7 +273,7 @@ class Socratic(lmms):
                         all_captions_dict[f"[{window_start}s-{window_end}s]"] = caption
 
                     window_start = window_end
-                    if window_end+spf >= video_info["total_duration"]:
+                    if window_end + spf >= video_info["total_duration"]:
                         break
                     else:
                         window_start = window_end
@@ -296,7 +295,7 @@ class Socratic(lmms):
             messages = [
                 {"role": "system", "content": "Answer the next question from the following captions of a video and return the temporal window of the video in which the answer is contained."},
                 {"role": "user", "content": f"Question: {contexts}"},
-                {"role": "user", "content": f"Captions: {all_captions}"}
+                {"role": "user", "content": f"Captions: {all_captions}"},
             ]
             t_llm_s = time.time()
             answer_format = self.llm_vqa.inference_format(AnswerVQA, messages, False)
@@ -316,12 +315,8 @@ class Socratic(lmms):
             times_and_inferences["caption_video_time"] = caption_time
             times_and_inferences["caption_time"] = caption_time
             times_and_inferences["llm_tokens_usage"] = answer_format.usage.total_tokens
-            
-            answer = {
-                "response": response,
-                "times_and_inferences": times_and_inferences,
-                "temporal_window": temporal_window
-            }
+
+            answer = {"response": response, "times_and_inferences": times_and_inferences, "temporal_window": temporal_window}
             print("-----------------------------------------------------------------------------------------------------------------------")
             print("Final Answer: ", answer["response"], "located at temporal window: ", answer["temporal_window"], "after num_inferences: ", num_inferences)
             print("-----------------------------------------------------------------------------------------------------------------------")

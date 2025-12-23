@@ -10,20 +10,16 @@ from accelerate import Accelerator, DistributedType
 from loguru import logger as eval_logger
 from PIL import Image
 from tqdm import tqdm
-from transformers import (
-    AutoProcessor,
-    AutoTokenizer,
-    Qwen3VLForConditionalGeneration,
-    Qwen3VLMoeForConditionalGeneration,
-)
+from transformers import (AutoProcessor, AutoTokenizer,
+                          Qwen3VLForConditionalGeneration,
+                          Qwen3VLMoeForConditionalGeneration)
 
 from lmms_eval import utils
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
-from lmms_eval.models.model_utils.reasoning_model_utils import (
-    parse_reasoning_model_answer,
-)
+from lmms_eval.models.model_utils.reasoning_model_utils import \
+    parse_reasoning_model_answer
 
 try:
     from qwen_vl_utils import process_vision_info

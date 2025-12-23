@@ -6,7 +6,8 @@ import signal
 from numbers import Number
 
 import pronouncing
-from metrics.parsing.common.parsers import parse_nested_str_list, parse_syllable_ranges
+from metrics.parsing.common.parsers import (parse_nested_str_list,
+                                            parse_syllable_ranges)
 from metrics.scoring.common.conversions import str_to_iterable
 from nltk.corpus import wordnet
 from nltk.stem import WordNetLemmatizer

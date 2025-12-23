@@ -16,9 +16,8 @@ from dotenv import load_dotenv
 from loguru import logger as eval_logger
 
 from lmms_eval.models.model_utils.gen_metrics import log_metrics
-from lmms_eval.models.simple.openai_compatible import (
-    OpenAICompatible as OpenAICompatibleSimple,
-)
+from lmms_eval.models.simple.openai_compatible import \
+    OpenAICompatible as OpenAICompatibleSimple
 from lmms_eval.protocol import ChatMessages
 
 load_dotenv(verbose=True)

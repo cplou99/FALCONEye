@@ -1,4 +1,5 @@
-from metrics.scoring.common.conversions import parse_point_2d_from_xml, str_to_bboxes
+from metrics.scoring.common.conversions import (parse_point_2d_from_xml,
+                                                str_to_bboxes)
 
 
 class XmlNormPointInBbox:

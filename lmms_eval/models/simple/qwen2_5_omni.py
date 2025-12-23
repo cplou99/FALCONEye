@@ -14,7 +14,8 @@ from loguru import logger as eval_logger
 from moviepy import VideoFileClip
 from PIL import Image
 from tqdm import tqdm
-from transformers import Qwen2_5OmniForConditionalGeneration, Qwen2_5OmniProcessor
+from transformers import (Qwen2_5OmniForConditionalGeneration,
+                          Qwen2_5OmniProcessor)
 
 from lmms_eval import utils
 from lmms_eval.api.instance import Instance

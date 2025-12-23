@@ -5,34 +5,17 @@ from loguru import logger
 
 from lmms_eval.tasks._task_utils.file_utils import generate_submission_file
 from lmms_eval.tasks.ocrbench_v2.IoUscore_metric import (
-    calculate_iou,
-    extract_coordinates,
-    vqa_with_position_evaluation,
-)
+    calculate_iou, extract_coordinates, vqa_with_position_evaluation)
 from lmms_eval.tasks.ocrbench_v2.page_ocr_metric import cal_per_metrics
 from lmms_eval.tasks.ocrbench_v2.spotting_metric import (
-    extract_bounding_boxes_robust,
-    spotting_evaluation,
-)
+    extract_bounding_boxes_robust, spotting_evaluation)
 from lmms_eval.tasks.ocrbench_v2.TEDS_metric import (
-    TEDS,
-    compute_f1_score,
-    convert_markdown_table_to_html,
-    convert_str_to_dict,
-    convert_str_to_multi_dict,
-    dict_to_html,
-    doc_parsing_evaluation,
-    generate_combinations,
-    wrap_html_table,
-)
+    TEDS, compute_f1_score, convert_markdown_table_to_html,
+    convert_str_to_dict, convert_str_to_multi_dict, dict_to_html,
+    doc_parsing_evaluation, generate_combinations, wrap_html_table)
 from lmms_eval.tasks.ocrbench_v2.vqa_metric import (
-    cn_math_expression_evaluation,
-    cn_vqa_evaluation,
-    counting_evaluation,
-    math_expression_evaluation,
-    vqa_evaluation,
-    vqa_evaluation_case_sensitive,
-)
+    cn_math_expression_evaluation, cn_vqa_evaluation, counting_evaluation,
+    math_expression_evaluation, vqa_evaluation, vqa_evaluation_case_sensitive)
 
 # Add the following functions to your existing utils.py file
 OCRBench_v2_score = {

@@ -10,10 +10,7 @@ from loguru import logger as eval_logger
 
 from lmms_eval.tasks._task_utils.file_utils import generate_submission_file
 from lmms_eval.tasks.megabench.image_video_utils import (
-    is_video_file,
-    process_text_and_mixed_media,
-    read_image,
-)
+    is_video_file, process_text_and_mixed_media, read_image)
 
 hf_home = os.getenv("HF_HOME", "~/.cache/huggingface")
 base_cache_dir = os.path.expanduser(hf_home)

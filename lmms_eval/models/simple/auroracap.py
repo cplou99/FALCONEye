@@ -14,13 +14,8 @@ from huggingface_hub import snapshot_download
 from peft import PeftModel
 from PIL import Image
 from tqdm import tqdm
-from transformers import (
-    AutoModel,
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    BitsAndBytesConfig,
-    CLIPImageProcessor,
-)
+from transformers import (AutoModel, AutoModelForCausalLM, AutoTokenizer,
+                          BitsAndBytesConfig, CLIPImageProcessor)
 
 from lmms_eval import utils
 from lmms_eval.api.instance import Instance
@@ -30,11 +25,9 @@ from lmms_eval.models.model_utils.load_video import read_video_pyav
 from lmms_eval.utils import stop_sequences_criteria
 
 try:
-    from lmms_eval.models.aurora_xtuner.model.aurora import (
-        AuroraEncoder,
-        AuroraModel,
-        AuroraSigEncoder,
-    )
+    from lmms_eval.models.aurora_xtuner.model.aurora import (AuroraEncoder,
+                                                             AuroraModel,
+                                                             AuroraSigEncoder)
     from lmms_eval.models.aurora_xtuner.utils import PROMPT_TEMPLATE
 except ImportError:
     eval_logger.error("AuroraCap is not installed. Please install AuroraCap to use this model by `git clone https://github.com/rese1f/aurora.git` and link `src/xtuner/xtuner` to `lmms_eval/models/aurora_xtuner`")
@@ -45,13 +38,9 @@ warnings.filterwarnings("ignore")
 eval_logger = logging.getLogger("lmms-eval")
 
 try:
-    from llava.constants import (
-        DEFAULT_IM_END_TOKEN,
-        DEFAULT_IM_START_TOKEN,
-        DEFAULT_IMAGE_TOKEN,
-        IGNORE_INDEX,
-        IMAGE_TOKEN_INDEX,
-    )
+    from llava.constants import (DEFAULT_IM_END_TOKEN, DEFAULT_IM_START_TOKEN,
+                                 DEFAULT_IMAGE_TOKEN, IGNORE_INDEX,
+                                 IMAGE_TOKEN_INDEX)
     from llava.conversation import SeparatorStyle, conv_templates
     from llava.mm_utils import get_model_name_from_path, tokenizer_image_token
 except ImportError:
