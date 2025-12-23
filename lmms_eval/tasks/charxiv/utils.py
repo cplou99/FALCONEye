@@ -6,11 +6,16 @@ from tqdm import tqdm
 
 from lmms_eval.tasks.charxiv.constant import REASONING_RESP_INST
 from lmms_eval.tasks.charxiv.descriptive_utils import (
-    build_descriptive_grading_queries, descriptive_query_helper,
-    get_descriptive_result_gpt, postprocess_descriptive_grading_queries)
+    build_descriptive_grading_queries,
+    descriptive_query_helper,
+    get_descriptive_result_gpt,
+    postprocess_descriptive_grading_queries,
+)
 from lmms_eval.tasks.charxiv.reasoning_utils import (
-    build_reasoning_grading_queries, get_number_instruction,
-    get_reasoning_result_gpt)
+    build_reasoning_grading_queries,
+    get_number_instruction,
+    get_reasoning_result_gpt,
+)
 
 # get environment else return dummy values, in a single line
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "YOUR_OPENAI_API_KEY")

@@ -11,6 +11,7 @@ import torch
 from accelerate import Accelerator, DistributedType, InitProcessGroupKwargs
 from accelerate.state import AcceleratorState
 from decord import VideoReader, cpu
+
 # eval_logger = logging.getLogger("lmms-eval")
 # import sys;sys.path.append("llava-video")
 from loguru import logger as eval_logger

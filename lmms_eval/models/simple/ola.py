@@ -43,15 +43,26 @@ wd = Path(__file__).parent.parent.parent.parent.resolve()
 sys.path.append(os.path.join(str(wd), "Ola"))
 
 import whisper
-from ola.constants import (DEFAULT_IM_END_TOKEN, DEFAULT_IM_START_TOKEN,
-                           DEFAULT_IMAGE_TOKEN, DEFAULT_SPEECH_TOKEN,
-                           IMAGE_TOKEN_INDEX, SPEECH_TOKEN_INDEX)
+from ola.constants import (
+    DEFAULT_IM_END_TOKEN,
+    DEFAULT_IM_START_TOKEN,
+    DEFAULT_IMAGE_TOKEN,
+    DEFAULT_SPEECH_TOKEN,
+    IMAGE_TOKEN_INDEX,
+    SPEECH_TOKEN_INDEX,
+)
 from ola.conversation import SeparatorStyle, conv_templates
-from ola.datasets.preprocess import (tokenizer_image_token,
-                                     tokenizer_speech_image_token,
-                                     tokenizer_speech_token)
-from ola.mm_utils import (KeywordsStoppingCriteria, get_model_name_from_path,
-                          process_anyres_highres_image, process_anyres_video)
+from ola.datasets.preprocess import (
+    tokenizer_image_token,
+    tokenizer_speech_image_token,
+    tokenizer_speech_token,
+)
+from ola.mm_utils import (
+    KeywordsStoppingCriteria,
+    get_model_name_from_path,
+    process_anyres_highres_image,
+    process_anyres_video,
+)
 from ola.model.builder import load_pretrained_model
 
 try:

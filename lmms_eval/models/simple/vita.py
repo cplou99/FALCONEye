@@ -25,15 +25,22 @@ warnings.filterwarnings("ignore")
 from loguru import logger as eval_logger
 
 try:
-    from vita.constants import (DEFAULT_AUDIO_TOKEN, DEFAULT_IMAGE_TOKEN,
-                                DEFAULT_VIDEO_TOKEN, IGNORE_INDEX,
-                                IMAGE_TOKEN_INDEX, MAX_IMAGE_LENGTH)
+    from vita.constants import (
+        DEFAULT_AUDIO_TOKEN,
+        DEFAULT_IMAGE_TOKEN,
+        DEFAULT_VIDEO_TOKEN,
+        IGNORE_INDEX,
+        IMAGE_TOKEN_INDEX,
+        MAX_IMAGE_LENGTH,
+    )
     from vita.conversation import SeparatorStyle, conv_templates
     from vita.model.builder import load_pretrained_model
-    from vita.util.mm_utils import (KeywordsStoppingCriteria,
-                                    get_model_name_from_path,
-                                    tokenizer_image_audio_token,
-                                    tokenizer_image_token)
+    from vita.util.mm_utils import (
+        KeywordsStoppingCriteria,
+        get_model_name_from_path,
+        tokenizer_image_audio_token,
+        tokenizer_image_token,
+    )
     from vita.util.utils import disable_torch_init
 except Exception as e:
     eval_logger.error(f"Error {e} in loading VITA")
@@ -99,13 +106,11 @@ class VITA(lmms):
         self.max_frames = max_frames
         self.frameCat = frameCat
         if self.frameCat:
-            from vita.util.data_utils_video_audio_neg_frameCat import \
-                dynamic_preprocess
+            from vita.util.data_utils_video_audio_neg_frameCat import dynamic_preprocess
 
             self.dynamic_preprocess = dynamic_preprocess
         else:
-            from vita.util.data_utils_video_audio_neg_patch import \
-                dynamic_preprocess
+            from vita.util.data_utils_video_audio_neg_patch import dynamic_preprocess
 
             self.dynamic_preprocess = dynamic_preprocess
         # assert self.batch_size_per_gpu == 1, "Llava currently does not support batched generation. See https://github.com/haotian-liu/LLaVA/issues/754. HF Llava also has this issue."

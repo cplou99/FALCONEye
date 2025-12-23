@@ -34,8 +34,7 @@ from loguru import logger as eval_logger
 from qwen_vl_utils import process_vision_info
 
 try:
-    from sglang.srt.function_call.function_call_parser import \
-        FunctionCallParser
+    from sglang.srt.function_call.function_call_parser import FunctionCallParser
 except ImportError:
     from sglang.srt.function_call_parser import FunctionCallParser
 

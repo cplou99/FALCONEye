@@ -54,8 +54,9 @@ class LongVila(VLLMSimple):
         try:
             from remote_code.media import extract_media as _extract_media
             from remote_code.mm_utils import process_images as _process_images
-            from remote_code.tokenizer_utils import \
-                tokenize_conversation as _tokenize_conversation
+            from remote_code.tokenizer_utils import (
+                tokenize_conversation as _tokenize_conversation,
+            )
         except Exception as e:
             raise ImportError(f"Failed to import LongVILA remote_code utilities from '{model_root}'. Ensure the model path contains remote_code. Original error: {e}")
 

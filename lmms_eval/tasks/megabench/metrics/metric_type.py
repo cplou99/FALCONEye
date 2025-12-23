@@ -7,50 +7,55 @@ from metrics.scoring.chess_jaccard import ChessMoveJaccard
 from metrics.scoring.constrained_generation import ConstrainedGenerationEval
 from metrics.scoring.coordinate_sequence_match import CoordsSequenceSimilarity
 from metrics.scoring.dict_equality import DictEquality, DictPrecision
-from metrics.scoring.dict_exact_match_agg_recall import \
-    DictExactStrMatchAggRecall
+from metrics.scoring.dict_exact_match_agg_recall import DictExactStrMatchAggRecall
 from metrics.scoring.dict_jaccard_agg_jaccard import DictJaccardAggJaccard
-from metrics.scoring.dict_nbbox_iou_tuple_agg_jaccard import \
-    DictNbboxIouTupleAggJaccard
-from metrics.scoring.dict_set_equality_agg_jaccard import \
-    DictSetEqualityAggJaccard
-from metrics.scoring.exact_str_match import (CodeResultExactStrMatch,
-                                             ExactStrMatch)
-from metrics.scoring.exact_str_match_case_insensitive import \
-    ExactStrMatchCaseInsensitive
+from metrics.scoring.dict_nbbox_iou_tuple_agg_jaccard import DictNbboxIouTupleAggJaccard
+from metrics.scoring.dict_set_equality_agg_jaccard import DictSetEqualityAggJaccard
+from metrics.scoring.exact_str_match import CodeResultExactStrMatch, ExactStrMatch
+from metrics.scoring.exact_str_match_case_insensitive import (
+    ExactStrMatchCaseInsensitive,
+)
 from metrics.scoring.general_numerical_match import (
-    BoxedSingleNumericalMatch, GeneralSingleNumericalMatch)
+    BoxedSingleNumericalMatch,
+    GeneralSingleNumericalMatch,
+)
 from metrics.scoring.geo_proximity import GeoProximityLocationDict
 from metrics.scoring.gleu import GLEUChinese
 from metrics.scoring.jaccard import Jaccard, JaccardCaseInsensitive
-from metrics.scoring.latex_expr_equality import (LatexExprEquality,
-                                                 TextLatexExprEquality)
-from metrics.scoring.longest_common_list_prefix_ratio import \
-    LongestCommonListPrefixRatio
+from metrics.scoring.latex_expr_equality import LatexExprEquality, TextLatexExprEquality
+from metrics.scoring.longest_common_list_prefix_ratio import (
+    LongestCommonListPrefixRatio,
+)
 from metrics.scoring.mse import AngleSeqFloatRMSE, NormalizedRMSE
 from metrics.scoring.multi_ref_phrase import MultipleReferencePhraseEval
-from metrics.scoring.nbbox_iou import (NbboxIouSequence, NbboxIouSingle,
-                                       NbboxIouTuple)
+from metrics.scoring.nbbox_iou import NbboxIouSequence, NbboxIouSingle, NbboxIouTuple
 from metrics.scoring.near_str_match import NearStrMatch
 from metrics.scoring.nli_entailment import NliEntailment
-from metrics.scoring.normalized_similarity_damerau_levenshtein import \
-    NormalizedSimilarityDamerauLevenshtein
+from metrics.scoring.normalized_similarity_damerau_levenshtein import (
+    NormalizedSimilarityDamerauLevenshtein,
+)
 from metrics.scoring.number_rel_diff_ratio import NumberRelDiffRatio
 from metrics.scoring.positive_int_match import PositiveIntMatch
 from metrics.scoring.program_judge import ProgramJudge
 from metrics.scoring.sacrebleu_bleu import Bleu
-from metrics.scoring.sequence_equality import (SequenceAccuracyCaseInsensitive,
-                                               SequenceEquality,
-                                               SequenceEqualityCaseInsensitive)
-from metrics.scoring.set_equality import (SetEquality,
-                                          SetEqualityCaseInsensitive,
-                                          StringSetEqualityCommaSplit,
-                                          StringSetEqualityLineSplit)
+from metrics.scoring.sequence_equality import (
+    SequenceAccuracyCaseInsensitive,
+    SequenceEquality,
+    SequenceEqualityCaseInsensitive,
+)
+from metrics.scoring.set_equality import (
+    SetEquality,
+    SetEqualityCaseInsensitive,
+    StringSetEqualityCommaSplit,
+    StringSetEqualityLineSplit,
+)
 from metrics.scoring.set_precision import SetPrecision
+
 # Import all metrics
 from metrics.scoring.simple_str_match import SimpleStrMatch
 from metrics.scoring.symbolic_planning import SymbolicPlanningMetricTest
 from metrics.scoring.unsupported_scoring import UnsupportedScoring
+
 ## The vlm-judge metrics
 from metrics.scoring.vlm_as_judge import VLMJudgeScore
 from metrics.scoring.xml_nbbox_iou import XmlNbboxIouSingle

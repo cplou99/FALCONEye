@@ -10,8 +10,9 @@ from lmms_eval import utils
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.registry import register_model
 from lmms_eval.models.model_utils.gen_metrics import log_metrics
-from lmms_eval.models.simple.llava_onevision1_5 import \
-    Llava_OneVision1_5 as LlavaOneVisionSimple
+from lmms_eval.models.simple.llava_onevision1_5 import (
+    Llava_OneVision1_5 as LlavaOneVisionSimple,
+)
 from lmms_eval.protocol import ChatMessages
 
 try:

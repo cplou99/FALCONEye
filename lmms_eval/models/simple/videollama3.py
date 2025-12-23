@@ -10,8 +10,12 @@ from decord import VideoReader, cpu
 from loguru import logger as eval_logger
 from PIL import Image
 from tqdm import tqdm
-from transformers import (AutoImageProcessor, AutoModel, AutoModelForCausalLM,
-                          AutoProcessor)
+from transformers import (
+    AutoImageProcessor,
+    AutoModel,
+    AutoModelForCausalLM,
+    AutoProcessor,
+)
 
 from lmms_eval import utils
 from lmms_eval.api.instance import Instance

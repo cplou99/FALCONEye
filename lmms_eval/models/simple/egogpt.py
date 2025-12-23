@@ -46,9 +46,13 @@ try:
     import torch
     import whisper
     from decord import VideoReader, cpu
-    from egogpt.constants import (DEFAULT_IMAGE_TOKEN, DEFAULT_SPEECH_TOKEN,
-                                  IGNORE_INDEX, IMAGE_TOKEN_INDEX,
-                                  SPEECH_TOKEN_INDEX)
+    from egogpt.constants import (
+        DEFAULT_IMAGE_TOKEN,
+        DEFAULT_SPEECH_TOKEN,
+        IGNORE_INDEX,
+        IMAGE_TOKEN_INDEX,
+        SPEECH_TOKEN_INDEX,
+    )
     from egogpt.conversation import SeparatorStyle, conv_templates
     from egogpt.mm_utils import get_model_name_from_path, process_images
     from egogpt.model.builder import load_pretrained_model

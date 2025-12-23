@@ -2,9 +2,11 @@ from typing import List, Optional, Tuple, Union
 
 import torch
 from accelerate import Accelerator, DistributedType
-from apps.plm.generate import (PackedCausalTransformerGenerator,
-                               PackedCausalTransformerGeneratorArgs,
-                               load_consolidated_model_and_tokenizer)
+from apps.plm.generate import (
+    PackedCausalTransformerGenerator,
+    PackedCausalTransformerGeneratorArgs,
+    load_consolidated_model_and_tokenizer,
+)
 from core.args import dataclass_from_dict
 from core.transforms.image_transform import get_image_transform
 from core.transforms.video_transform import get_video_transform

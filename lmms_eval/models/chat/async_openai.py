@@ -29,8 +29,9 @@ from PIL import Image
 
 from lmms_eval.api.model import lmms
 from lmms_eval.mcp import MCPClient
-from lmms_eval.models.simple.openai_compatible import \
-    OpenAICompatible as OpenAICompatibleSimple
+from lmms_eval.models.simple.openai_compatible import (
+    OpenAICompatible as OpenAICompatibleSimple,
+)
 from lmms_eval.protocol import ChatMessages
 
 load_dotenv(verbose=True)

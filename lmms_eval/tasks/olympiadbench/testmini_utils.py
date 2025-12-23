@@ -6,8 +6,7 @@ from loguru import logger as eval_logger
 
 from lmms_eval.llm_judge import ServerConfig, get_server
 from lmms_eval.tasks._task_utils.file_utils import generate_submission_file
-from lmms_eval.tasks.olympiadbench.olympiadbench_evals import \
-    OlympiadBenchEvaluator
+from lmms_eval.tasks.olympiadbench.olympiadbench_evals import OlympiadBenchEvaluator
 
 dir_name = os.path.dirname(os.path.abspath(__file__))
 

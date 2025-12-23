@@ -14,8 +14,15 @@ import lmms_eval.tasks._task_utils.file_utils as file_utils
 
 try:
     import sglang as sgl
-    from sglang import (RuntimeEndpoint, assistant, function, gen,
-                        set_default_backend, system, user)
+    from sglang import (
+        RuntimeEndpoint,
+        assistant,
+        function,
+        gen,
+        set_default_backend,
+        system,
+        user,
+    )
 except ImportError:
     eval_logger.debug("SGLang is not installed. If you want to use llava_sglang, please install it using pip install 'sglang[all]' ")
 

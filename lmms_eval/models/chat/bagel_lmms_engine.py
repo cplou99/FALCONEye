@@ -20,8 +20,7 @@ from lmms_eval.api.registry import register_model
 from lmms_eval.protocol import ChatMessages
 
 try:
-    from lmms_engine.datasets.processor import (BagelDataProcessor,
-                                                ProcessorConfig)
+    from lmms_engine.datasets.processor import BagelDataProcessor, ProcessorConfig
     from lmms_engine.models.bagel import Bagel
     from lmms_engine.models.bagel.inferencer import InterleaveInferencer
 except Exception as e:

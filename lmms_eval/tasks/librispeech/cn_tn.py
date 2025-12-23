@@ -1059,8 +1059,7 @@ class TextNorm:
 
         self.cc = None
         if cc_mode:
-            from opencc import \
-                OpenCC  # Open Chinese Convert: pip install opencc
+            from opencc import OpenCC  # Open Chinese Convert: pip install opencc
 
             self.cc = OpenCC(cc_mode)
 

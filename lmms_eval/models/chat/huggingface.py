@@ -11,17 +11,23 @@ from accelerate import Accelerator, DistributedType
 from loguru import logger as eval_logger
 from PIL import Image
 from tqdm import tqdm
-from transformers import (AutoConfig, AutoModel, AutoModelForCausalLM,
-                          AutoModelForImageTextToText, AutoProcessor,
-                          AutoTokenizer)
+from transformers import (
+    AutoConfig,
+    AutoModel,
+    AutoModelForCausalLM,
+    AutoModelForImageTextToText,
+    AutoProcessor,
+    AutoTokenizer,
+)
 
 from lmms_eval import utils
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
 from lmms_eval.models.model_utils.gen_metrics import log_metrics
-from lmms_eval.models.model_utils.reasoning_model_utils import \
-    parse_reasoning_model_answer
+from lmms_eval.models.model_utils.reasoning_model_utils import (
+    parse_reasoning_model_answer,
+)
 from lmms_eval.protocol import ChatMessages
 
 try:
