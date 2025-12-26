@@ -1475,6 +1475,8 @@ class ConfigurableTask(Task):
         if self.OUTPUT_TYPE == "generate_until":
             if isinstance(results, list) and isinstance(results[0], list):
                 results = [res.strip() for res in results[0]]
+            elif isinstance(results, list) and isinstance(results[0], dict):
+                results = results
             else:
                 results = [res.strip() for res in results]
 
