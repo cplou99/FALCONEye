@@ -29,7 +29,7 @@ pip install soccernet
 ```
 
 ## Description
-This repo contains the code presented in the paper [FALCONEye](https://arxiv.org/abs/2503.19850).
+This repo contains the code presented in the paper [FALCONEye](https://arxiv.org/abs/2503.19850): a **novel video agent for video question answering**.
 FALCONEye code was built under the [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval) framework. Specifically, the main contributions of this repo are:
 - FALCON-Bench: lmms_eval/tasks/FALCONBench/
 - FALCONEye meta-architecture: lmms_eval/models/meta_architecture/falcon_eye.py
