@@ -10,7 +10,7 @@
 
 
 <div align="center">
-   <a href="https://cplou99.github.io/FALCONEye/"><strong>🌍 Homepage</strong></a> | <a href="https://huggingface.co/datasets/cplou99/FALCON-Bench"><strong>🤗 Benchmark</strong></a> |  <a href="https://arxiv.org/abs/2503.19850"><strong>📝 ArXiv</strong></a>
+   <a href="https://cplou99.github.io/FALCONEye/"><strong>🌍 Homepage</strong></a> | <a href="https://huggingface.co/datasets/cplou99/FALCON-Bench"><strong>🤗 Benchmark</strong></a> |  <a href="https://arxiv.org/abs/2503.19850"><strong>📝 ArXiv</strong></a> |  <a href="docs/img/falconeye_poster.png"><strong>🖼️ Poster</strong></a> |  <a href="https://youtu.be/watch?v=HDyc6uejWko"><strong>🎬 Presentation</strong></a>
    </div>   
 
 
