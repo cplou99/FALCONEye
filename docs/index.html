@@ -206,6 +206,33 @@
         margin: 20px auto; /* Centra la imagen */
     }
 
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px auto;
+        font-size: 0.95rem;
+        table-layout: fixed;
+    }
+
+    th, td {
+        border: 1px solid #d9d9d9;
+        padding: 8px 10px;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    th {
+        background: #f5f5f5;
+        font-weight: 700;
+    }
+
+    .results-note {
+        font-size: 0.95rem;
+        font-style: italic;
+        color: #444;
+        margin-top: 10px;
+    }
+
     .image-pair {
         display: flex;
         justify-content: center;
@@ -349,11 +376,68 @@
 <p>While our research focus is centered on open-questions, we provide 4 choices per question to enable multiple-choice question evaluation mode. Besides, we provide the <strong>ground truth temporal clip annotation</strong> (gt_time_interval) and a ground truth frame (gt_frame_idx) <strong>within the answer is contained</strong>.</p>
 <img src="img/FalconBench_examples_new.png" class="small-image">
 <hr>
-<h2 id="results">Results</h2>
-<p>We evaluate our meta-architecture using Qwen2.5-VL 7B as the VLM and GPT4o-mini as the LLM. Most VLMs that are limited to a small number of sampled frames fail to outperform the LLM-blind baselines in MCQs, suggesting that their advantage over random guessing stems from discarding certain options, rather than actual answer retrieval from visual content. Only LLaVA-Video and Apollo show clear improvements. This trend is not observed in OQs, where models must generate answers independently, validating their reliability.  Among meta-architectures, only <strong>FALCONEye</strong> demonstrates robustness for long-form VAS, <strong>achieving 70.0% accuracy in MCQs and 44.7% in OQs</strong> with its top-performance configuration, and 64.7% and 41.1%, respectively, in the cost-efficient variant.</p>
-<figure class="teaser">
-    <img src="img/MainResultsTable.png">
-</figure>
+<h2 id="results">FALCON-Bench Evaluation Results</h2>
+<p>We evaluate our meta-architecture using Qwen2.5-VL 7B as the VLM and GPT4o-mini as the LLM. Most VLMs that are limited to a small number of sampled frames fail to outperform the LLM-blind baselines in MCQs, suggesting that their advantage over random guessing stems from discarding certain options, rather than actual answer retrieval from visual content. Only LLaVA-Video and Apollo show clear improvements. This trend is not observed in OQs, where models must generate answers independently, validating their reliability. Among meta-architectures, only <strong>FALCONEye</strong> demonstrates robustness for long-form VAS, <strong>achieving 70.0% accuracy in MCQs and 44.7% in OQs</strong> with its top-performance configuration, and 64.7% and 41.1%, respectively, in the cost-efficient variant.</p>
+<p>Below are the performance comparisons of state-of-the-art VLMs and our agentic framework (FALCONEye) on the FALCON-Bench test split. The results evaluate both answering accuracy and temporal localization capability.</p>
+
+<h3>1. Multiple Choice Questions (MCQ)</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Model</th>
+      <th>Temp Loc</th>
+      <th>SoccerNet<br>(Acc)</th>
+      <th>MovieChat-1K<br>(Acc)</th>
+      <th>Walking Tours<br>(Acc)</th>
+      <th><strong>Average</strong><br><strong>(Acc / mGToU)</strong></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>VLM</strong></td><td>Qwen2.5-VL (7B)</td><td>❌</td><td>24.4%</td><td>48.0%</td><td>50.0%</td><td>40.8% / -</td></tr>
+    <tr><td><strong>VLM</strong></td><td>LLaVA-Video (7B)</td><td>❌</td><td>38.9%</td><td>50.0%</td><td>58.0%</td><td>48.9% / -</td></tr>
+    <tr><td><strong>VLM</strong></td><td>Apollo (7B)</td><td>❌</td><td>35.8%</td><td>51.9%</td><td>64.0%</td><td>50.5% / -</td></tr>
+    <tr><td><strong>VLM</strong></td><td><strong>Gemini 3.5 Flash</strong></td><td>❌</td><td>97.74%</td><td>81.37%</td><td>64.00%</td><td><strong>81.04% / -</strong></td></tr>
+    <tr><td><strong>VLM</strong></td><td><strong>Gemini 3.5 Flash</strong></td><td>✅</td><td>98.31%</td><td>81.37%</td><td>64.00%</td><td><strong>81.23% / 7.32%</strong></td></tr>
+    <tr><td colspan="7" style="border: none; background: transparent; padding: 6px;">─────── &nbsp; ──────────── &nbsp; ─── &nbsp; ────────── &nbsp; ────────── &nbsp; ────────── &nbsp; ──────────</td></tr>
+    <tr><td><strong>Agent</strong></td><td>Socratic</td><td>✅</td><td>54.0%</td><td>51.9%</td><td>48.0%</td><td>53.9% / 21.3%</td></tr>
+    <tr><td><strong>Agent</strong></td><td>Lifelong Memory</td><td>✅</td><td>41.5%</td><td>45.0%</td><td>38.0%</td><td>41.8% / 0.00%</td></tr>
+    <tr><td><strong>Agent</strong></td><td>VideoAgent+OQ</td><td>✅</td><td>52.2%</td><td>48.0%</td><td>36.0%</td><td>45.4% / 19.1%</td></tr>
+    <tr><td><strong>Agent</strong></td><td><em>FALCONEye (Cost-Efficient)</em></td><td>✅</td><td>68.0%</td><td>64.7%</td><td>58.4%</td><td><em>67.6% / 25.2%</em></td></tr>
+    <tr><td><strong>Agent</strong></td><td><em>FALCONEye (Top-Performance)</em></td><td>✅</td><td>74.0%</td><td>61.5%</td><td>74.5%</td><td><em>70.0% / 27.7%</em></td></tr>
+  </tbody>
+</table>
+
+<h3>2. Open-Ended Questions (OQ)</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Model</th>
+      <th>Temp Loc</th>
+      <th>SoccerNet<br>(Acc / Score)</th>
+      <th>MovieChat-1K<br>(Acc / Score)</th>
+      <th>Walking Tours<br>(Acc / Score)</th>
+      <th><strong>Average</strong><br><strong>(Acc / Score / mGToU)</strong></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>VLM</strong></td><td>Qwen2.5-VL (7B)</td><td>❌</td><td>8.19% / 0.25</td><td>11.7% / 0.72</td><td>10.0% / 0.53</td><td>9.96% / 0.62 / -</td></tr>
+    <tr><td><strong>VLM</strong></td><td>LLaVA-Video (7B)</td><td>❌</td><td>12.0% / 0.86</td><td>10.7% / 0.76</td><td>11.0% / 0.66</td><td>11.2% / 0.76 / -</td></tr>
+    <tr><td><strong>VLM</strong></td><td>Apollo (7B)</td><td>❌</td><td>18.0% / 0.68</td><td>16.6% / 0.96</td><td>10.7% / 1.06</td><td>15.1% / 0.90 / -</td></tr>
+    <tr><td><strong>VLM</strong></td><td><strong>Gemini 3.5 Flash</strong></td><td>❌</td><td>86.44% / 4.43</td><td>50.00% / 2.65</td><td>30.00% / 1.68</td><td><strong>55.48% / 2.92 / -</strong></td></tr>
+    <tr><td><strong>VLM</strong></td><td><strong>Gemini 3.5 Flash</strong></td><td>✅</td><td>82.49% / 4.38</td><td>50.98% / 2.70</td><td>28.00% / 1.50</td><td><strong>53.82% / 2.86 / 6.97%</strong></td></tr>
+    <tr><td colspan="7" style="border: none; background: transparent; padding: 6px;">─────── &nbsp; ──────────── &nbsp; ─── &nbsp; ────────── &nbsp; ────────── &nbsp; ────────── &nbsp; ──────────</td></tr>
+    <tr><td><strong>Agent</strong></td><td>Socratic</td><td>✅</td><td>6.86% / 1.71</td><td>25.4% / 1.16</td><td>8.82% / 1.37</td><td>13.8% / 1.45 / 19.6%</td></tr>
+    <tr><td><strong>Agent</strong></td><td>Lifelong Memory</td><td>✅</td><td>20.0% / 0.53</td><td>29.0% / 1.49</td><td>22.3% / 0.56</td><td>24.8% / 0.82 / 0.00%</td></tr>
+    <tr><td><strong>Agent</strong></td><td>VideoAgent+OQ</td><td>✅</td><td>24.8% / 1.38</td><td>8.00% / 0.56</td><td>8.00% / 0.44</td><td>13.8% / 0.79 / 13.3%</td></tr>
+    <tr><td><strong>Agent</strong></td><td><em>FALCONEye (Cost-Efficient)</em></td><td>✅</td><td>38.4% / 2.03</td><td>43.1% / 2.36</td><td>42.0% / 2.28</td><td><em>41.1% / 2.22 / 22.7%</em></td></tr>
+    <tr><td><strong>Agent</strong></td><td><em>FALCONEye (Top-Performance)</em></td><td>✅</td><td>37.2% / 1.96</td><td>50.9% / 2.67</td><td>46.0% / 2.50</td><td><em>44.7% / 2.38 / 24.9%</em></td></tr>
+  </tbody>
+</table>
+
+<p class="results-note"><em>Note: All agent meta-architectures are implemented using the same configuration to ensure fair comparison: Qwen2.5-VL (7B) as the underlying VLM and GPT-4o-mini as the LLM.</em></p>
+
 <hr>
 <h2 id="acks">Acknowledgments</h2>
 <p>This work was supported by a DGA scholarship and by DGA project T45_23R, and grants AIA2025-163563-C31, PID2024-159284NB-I00, PID2021-125514NB-I00 and PID2024-158322OB-I00 funded by MCIN/AEI/10.13039/501100011033 and ERDF.</p>
