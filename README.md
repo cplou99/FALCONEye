@@ -134,8 +134,8 @@ Below are the performance comparisons of state-of-the-art VLMs and our agentic f
 | **Agent** | Socratic | ✅ | 54.0% | 51.9% | 48.0% | 53.9% / 21.3% |
 | **Agent** | Lifelong Memory | ✅ | 41.5% | 45.0% | 38.0% | 41.8% / 0.00% |
 | **Agent** | VideoAgent+OQ | ✅ | 52.2% | 48.0% | 36.0% | 45.4% / 19.1% |
-| **Agent** | *FALCONEye (Cost-Efficient)* | ✅ | 68.0% | 64.7% | 58.4% | *67.6% / 25.2%* |
-| **Agent** | *FALCONEye (Top-Performance)*| ✅ | 74.0% | 61.5% | 74.5% | *70.0% / 27.7%* |
+| **Agent** | *FALCONEye (Flash)* | ✅ | 68.0% | 64.7% | 58.4% | *67.6% / 25.2%* |
+| **Agent** | *FALCONEye (Pro)*| ✅ | 74.0% | 61.5% | 74.5% | *70.0% / 27.7%* |
 
 ### 2. Open-Ended Questions (OQ)
 | Type | Model | Temp Loc | SoccerNet (Acc / Score) | MovieChat-1K (Acc / Score) | Walking Tours (Acc / Score) | **Average (Acc / Score / mGToU)** |
@@ -149,8 +149,8 @@ Below are the performance comparisons of state-of-the-art VLMs and our agentic f
 | **Agent** | Socratic | ✅ | 6.86% / 1.71 | 25.4% / 1.16 | 8.82% / 1.37 | 13.8% / 1.45 / 19.6% |
 | **Agent** | Lifelong Memory | ✅ | 20.0% / 0.53 | 29.0% / 1.49 | 22.3% / 0.56 | 24.8% / 0.82 / 0.00% |
 | **Agent** | VideoAgent+OQ | ✅ | 24.8% / 1.38 | 8.00% / 0.56 | 8.00% / 0.44 | 13.8% / 0.79 / 13.3% |
-| **Agent** | *FALCONEye (Cost-Efficient)* | ✅ | 38.4% / 2.03 | 43.1% / 2.36 | 42.0% / 2.28 | *41.1% / 2.22 / 22.7%* |
-| **Agent** | *FALCONEye (Top-Performance)*| ✅ | 37.2% / 1.96 | 50.9% / 2.67 | 46.0% / 2.50 | *44.7% / 2.38 / 24.9%* |
+| **Agent** | *FALCONEye (Flash)* | ✅ | 38.4% / 2.03 | 43.1% / 2.36 | 42.0% / 2.28 | *41.1% / 2.22 / 22.7%* |
+| **Agent** | *FALCONEye (Pro)*| ✅ | 37.2% / 1.96 | 50.9% / 2.67 | 46.0% / 2.50 | *44.7% / 2.38 / 24.9%* |
 
 > *Note: All agent meta-architectures are implemented using the same configuration to ensure fair comparison: Qwen2.5-VL (7B) as the underlying VLM and GPT-4o-mini as the LLM.*
 
