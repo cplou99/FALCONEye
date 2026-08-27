@@ -123,34 +123,36 @@ With these minimal changes, you can extend FALCONEye to support additional model
 Below are the performance comparisons of state-of-the-art VLMs and our agentic framework (FALCONEye) on the FALCON-Bench test split. The results evaluate both answering accuracy and temporal localization capability.
 
 ### 1. Multiple Choice Questions (MCQ)
-| Type | Model | Temp Loc | SoccerNet<br>(Acc) | MovieChat-1K<br>(Acc) | Walking Tours<br>(Acc) | **Average**<br>**(Acc / mGToU)** |
-|:---:|-------|:---:|:---:|:---:|:---:|:---:|
-| **VLM** | Qwen2.5-VL (7B) | ❌ | 24.4% | 48.0% | 50.0% | 40.8% / - |
-| **VLM** | LLaVA-Video (7B) | ❌ | 38.9% | 50.0% | 58.0% | 48.9% / - |
-| **VLM** | Apollo (7B) | ❌ | 35.8% | 51.9% | 64.0% | 50.5% / - |
-| **VLM** | **Gemini 3.5 Flash** | ❌ | 97.74% | 81.37% | 64.00% | **81.04% / -** |
-| **VLM** | **Gemini 3.5 Flash** | ✅ | 98.31% | 81.37% | 64.00% | **81.23% / 7.32%** |
-| ──────── | ──────────── | ─── | ────────── | ────────── | ────────── | ────────── |
-| **Agent** | Socratic | ✅ | 54.0% | 51.9% | 48.0% | 53.9% / 21.3% |
-| **Agent** | Lifelong Memory | ✅ | 41.5% | 45.0% | 38.0% | 41.8% / 0.00% |
-| **Agent** | VideoAgent+OQ | ✅ | 52.2% | 48.0% | 36.0% | 45.4% / 19.1% |
-| **Agent** | *FALCONEye (Cost-Efficient)* | ✅ | 68.0% | 64.7% | 58.4% | *67.6% / 25.2%* |
-| **Agent** | *FALCONEye (Top-Performance)*| ✅ | 74.0% | 61.5% | 74.5% | *70.0% / 27.7%* |
+| Type | Model | Temp | SoccerNet | MovieChat | Walking | Avg |
+|:---:|---|:---:|:---:|:---:|:---:|:---:|
+| **VLM** | Qwen2.5-VL (7B) | ❌ | 24.4% | 48.0% | 50.0% | 40.8% |
+| **VLM** | LLaVA-Video (7B) | ❌ | 38.9% | 50.0% | 58.0% | 48.9% |
+| **VLM** | Apollo (7B) | ❌ | 35.8% | 51.9% | 64.0% | 50.5% |
+| **VLM** | **Gemini 3.5 Flash** | ❌ | 97.74% | 81.37% | 64.00% | **81.04%** |
+| **VLM** | **Gemini 3.5 Flash** | ✅ | 98.31% | 81.37% | 64.00% | **81.23%** |
+| **Agent** | Socratic | ✅ | 54.0% | 51.9% | 48.0% | 53.9% |
+| **Agent** | Lifelong Memory | ✅ | 41.5% | 45.0% | 38.0% | 41.8% |
+| **Agent** | VideoAgent+OQ | ✅ | 52.2% | 48.0% | 36.0% | 45.4% |
+| **Agent** | *FALCONEye (Flash)* | ✅ | 68.0% | 64.7% | 58.4% | *67.6%* |
+| **Agent** | *FALCONEye (Pro)* | ✅ | 74.0% | 61.5% | 74.5% | *70.0%* |
+
+> mGToU is reported separately in the paper; the table above keeps the column widths compact for easier reading on GitHub.
 
 ### 2. Open-Ended Questions (OQ)
-| Type | Model | Temp Loc | SoccerNet<br>(Acc / Score) | MovieChat-1K<br>(Acc / Score) | Walking Tours<br>(Acc / Score) | **Average**<br>**(Acc / Score / mGToU)** |
-|:---:|-------|:---:|:---:|:---:|:---:|:---:|
-| **VLM** | Qwen2.5-VL (7B) | ❌ | 8.19% / 0.25 | 11.7% / 0.72 | 10.0% / 0.53 | 9.96% / 0.62 / - |
-| **VLM** | LLaVA-Video (7B) | ❌ | 12.0% / 0.86 | 10.7% / 0.76 | 11.0% / 0.66 | 11.2% / 0.76 / - |
-| **VLM** | Apollo (7B) | ❌ | 18.0% / 0.68 | 16.6% / 0.96 | 10.7% / 1.06 | 15.1% / 0.90 / - |
-| **VLM** | **Gemini 3.5 Flash** | ❌ | 86.44% / 4.43 | 50.00% / 2.65 | 30.00% / 1.68 | **55.48% / 2.92 / -** |
-| **VLM** | **Gemini 3.5 Flash** | ✅ | 82.49% / 4.38 | 50.98% / 2.70 | 28.00% / 1.50 | **53.82% / 2.86 / 6.97%** |
-| ──────── | ──────────── | ─── | ────────── | ────────── | ────────── | ────────── |
-| **Agent** | Socratic | ✅ | 6.86% / 1.71 | 25.4% / 1.16 | 8.82% / 1.37 | 13.8% / 1.45 / 19.6% |
-| **Agent** | Lifelong Memory | ✅ | 20.0% / 0.53 | 29.0% / 1.49 | 22.3% / 0.56 | 24.8% / 0.82 / 0.00% |
-| **Agent** | VideoAgent+OQ | ✅ | 24.8% / 1.38 | 8.00% / 0.56 | 8.00% / 0.44 | 13.8% / 0.79 / 13.3% |
-| **Agent** | *FALCONEye (Cost-Efficient)* | ✅ | 38.4% / 2.03 | 43.1% / 2.36 | 42.0% / 2.28 | *41.1% / 2.22 / 22.7%* |
-| **Agent** | *FALCONEye (Top-Performance)*| ✅ | 37.2% / 1.96 | 50.9% / 2.67 | 46.0% / 2.50 | *44.7% / 2.38 / 24.9%* |
+| Type | Model | Temp | SoccerNet | MovieChat | Walking | Avg |
+|:---:|---|:---:|:---:|:---:|:---:|:---:|
+| **VLM** | Qwen2.5-VL (7B) | ❌ | 8.19% / 0.25 | 11.7% / 0.72 | 10.0% / 0.53 | 9.96% / 0.62 |
+| **VLM** | LLaVA-Video (7B) | ❌ | 12.0% / 0.86 | 10.7% / 0.76 | 11.0% / 0.66 | 11.2% / 0.76 |
+| **VLM** | Apollo (7B) | ❌ | 18.0% / 0.68 | 16.6% / 0.96 | 10.7% / 1.06 | 15.1% / 0.90 |
+| **VLM** | **Gemini 3.5 Flash** | ❌ | 86.44% / 4.43 | 50.00% / 2.65 | 30.00% / 1.68 | **55.48% / 2.92** |
+| **VLM** | **Gemini 3.5 Flash** | ✅ | 82.49% / 4.38 | 50.98% / 2.70 | 28.00% / 1.50 | **53.82% / 2.86** |
+| **Agent** | Socratic | ✅ | 6.86% / 1.71 | 25.4% / 1.16 | 8.82% / 1.37 | 13.8% / 1.45 |
+| **Agent** | Lifelong Memory | ✅ | 20.0% / 0.53 | 29.0% / 1.49 | 22.3% / 0.56 | 24.8% / 0.82 |
+| **Agent** | VideoAgent+OQ | ✅ | 24.8% / 1.38 | 8.00% / 0.56 | 8.00% / 0.44 | 13.8% / 0.79 |
+| **Agent** | *FALCONEye (Flash)* | ✅ | 38.4% / 2.03 | 43.1% / 2.36 | 42.0% / 2.28 | *41.1% / 2.22* |
+| **Agent** | *FALCONEye (Pro)* | ✅ | 37.2% / 1.96 | 50.9% / 2.67 | 46.0% / 2.50 | *44.7% / 2.38* |
+
+> For the exact localization metric (mGToU), please refer to the full paper or the webpage version of the results.
 
 > *Note: All agent meta-architectures are implemented using the same configuration to ensure fair comparison: Qwen2.5-VL (7B) as the underlying VLM and GPT-4o-mini as the LLM.*
 
