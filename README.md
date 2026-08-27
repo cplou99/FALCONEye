@@ -15,7 +15,8 @@
 
 
 ## 🔔 News:
-- 🆕 12/2025: Code released!
+- 🆕 08/2026: New Gemini 3.5 Flash results on FALCON-Bench
+- 🤗 12/2025: Code released!
 - 🥳 11/2025: Paper accepted at WACV 2026!
 - ⭐ 3/2025: We have released the [FALCON-Bench](https://huggingface.co/datasets/cplou99/FALCON-Bench) and [Paper](https://arxiv.org/abs/2503.19850)! 🔥
 
